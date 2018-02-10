@@ -53,7 +53,7 @@
 #define _UNICODE
 
 #define APP_DESCRIPTION "Puzzle 2048 for Windows console"
-#define APP_VERSION "0.01.4"
+#define APP_VERSION "0.01.5"
 
 #define TEST_
 
@@ -64,7 +64,7 @@
 #define STR1(x) STR(x)
 #define STR2(x) STR(x.)
 
-#define EPRINT($fmt, ...) fprintf(stderr,"%d: " $fmt, __LINE__, ##__VA_ARGS__)
+#define EPRINT($fmt, ...) fprintf(stderr, "%d: " $fmt, __LINE__, ##__VA_ARGS__)
 #if defined(USE_PRINT_MACRO_)
 #define DPRINT($fmt, ...) DPRINT_STUB("%d: " $fmt, __LINE__, ##__VA_ARGS__)
 #define dprint($fmt, ...) DPRINT_STUB($fmt, __VA_ARGS__)
@@ -104,7 +104,7 @@ static_assert(UNKNOWN_COMPILER, "this compiler may not be fully supported");
 #elif defined(__clang__)
 #define NOTE(X) _Pragma(STR(GCC warning(X)))
 
-#endif // __GNUC__
+#endif  // __GNUC__
 
 // VC++ dislikes do { } while(0), FALSE_CONDITION tries to mute it
 #if defined(MSC_ONLY_)
@@ -121,7 +121,7 @@ static_assert(UNKNOWN_COMPILER, "this compiler may not be fully supported");
 #define __try (void)0;
 #define __except(x) (void)0;
 #define __finally (void)0;
-#endif // __GNUC__ || __clang__
+#endif  // __GNUC__ || __clang__
 
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
 #define snprintf _snprintf
@@ -149,13 +149,13 @@ static_assert(UNKNOWN_COMPILER, "this compiler may not be fully supported");
 // only for system headers, trying to reduce the noise caused by -Wall
 #pragma warning(push, 4)
 // (4005 4100 4189 4242 4514 4548 4668 4710 4820 4668)
-#pragma warning(disable: 4668) // 'symbol' is not defined as a preprocessor macro, replacing with '0' for 'directives'
-#pragma warning(disable: 4820) // 'bytes' bytes padding added after construct 'member_name'
-#if !defined(CC_STUB_OPTIONS)
+#pragma warning(disable: 4668)  // 'symbol' is not defined as a preprocessor macro, replacing with '0' for 'directives'
+#pragma warning(disable: 4820)  // 'bytes' bytes padding added after construct 'member_name'
+#if !defined(CC_STUB_CONFIG) || defined(HAS_WALL)
 INFO("with warning level -Wall, add compiler option -DNO_WALL_FILTER to disable filtering")
 #endif
-#endif // NO_WALL_FILTER
-#endif // MSC_ONLY_
+#endif  // NO_WALL_FILTER
+#endif  // MSC_ONLY_
 
 #include <stdint.h>
 #ifdef __MSVC_RUNTIME_CHECKS
@@ -172,7 +172,7 @@ INFO("with warning level -Wall, add compiler option -DNO_WALL_FILTER to disable 
 #define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
 // #undef THIS_FILE
 // static char THIS_FILE[] = __FILE__;
-#endif // MSC_DEBUG_
+#endif  // MSC_DEBUG_
 
 #include <tchar.h>
 #include <stdio.h>
@@ -185,7 +185,7 @@ INFO("with warning level -Wall, add compiler option -DNO_WALL_FILTER to disable 
 #endif
 
 enum { N = 4, S8 = sizeof(uint64_t), N64 = ((N * N + S8 - 1) / S8)};
-enum { X800 = 11 }; // game target value for 2048
+enum { X800 = 11 };  // game target value for 2048
 enum { UUS, ROW_L2R_STRIPE, COL_U2D_STRIPE, ROW_R2L_STRIPE, COL_D2U_STRIPE };
 
 BOOL CtrlHandler(DWORD ctrl);
@@ -218,7 +218,7 @@ void ErrorInfo(LPCTSTR lpszFunction);
 // template<typename ...Args>
 // int cprint(const char* fmt, Args... args)
 // {
-//     FILE* con_ = NULL; // fopen("CON", "w");
+//     FILE* con_ = NULL;  // fopen("CON", "w");
 //     if (fopen_s(&con_, "CON", "w") == 0) {
 //         if (con_) {
 //             int ret = fprintf(con_, fmt, args...);
@@ -361,7 +361,7 @@ class MemLeakReporter {
 // Instantiating it here makes main() look clean, but could lead to
 // issues like CRT startup routing not yet called.
 MemLeakReporter mld; NOTE("MemLeakReporter in use")
-} // ns: memleak_reporter
+}  // namespace memleak_reporter
 
 #if defined(__MSVC_RUNTIME_CHECKS)
 namespace runtime_error_reporter {
@@ -446,9 +446,9 @@ class RunTimeChecker {
 // Instantiating it here makes main() look clean, but could lead to
 // issues like CRT startup routing not yet called.
 RunTimeChecker rtc; NOTE("RunTimeChecker in use")
-} // ns: runtime_error_reporter
-#endif // __MSVC_RUNTIME_CHECKS
-#endif // MSC_DEBUG_
+}  // namespace runtime_error_reporter
+#endif  // __MSVC_RUNTIME_CHECKS
+#endif  // MSC_DEBUG_
 
 // end of code defect detectors }}}
 
@@ -500,35 +500,32 @@ class VerifierX {
     void operator=(HANDLE handle)
     {
         if (handle == INVALID_HANDLE_VALUE) {
-            if (line_) {
-                if (func_) {
-                    fprintf(stderr, "%s:%d: error in '%s': ...\n", file_, line_, func_);
-                } else {
-                    fprintf(stderr, "%s:%d: error: ...\n", file_, line_);
-                }
-            } else {
-                fprintf(stderr, "%s\n", "error");
-            }
+            print();
         } else {
         }
     }
 
     void operator=(int status)
     {
-        if (status == 0) {
+        if (status != 0) {
+            print();
         } else {
-            if (line_) {
-                if (func_) {
-                    fprintf(stderr, "%s:%d: error in '%s': ...\n", file_, line_, func_);
-                } else {
-                    fprintf(stderr, "%s:%d: error: ...\n", file_, line_);
-                }
-            } else {
-                fprintf(stderr, "%s\n", "error");
-            }
         }
     }
 
+  private:
+    void print()
+    {
+        if (line_) {
+            if (func_) {
+                fprintf(stderr, "%s:%d: error in '%s': ...\n", file_, line_, func_);
+            } else {
+                fprintf(stderr, "%s:%d: error: ...\n", file_, line_);
+            }
+        } else {
+            fprintf(stderr, "%s\n", "error");
+        }
+    }
   private:
     int line_;
     const char* file_;
@@ -563,7 +560,7 @@ class GRNG {
     {
         // NOTE: (seed ^ (seed >> 1)) gives Gray code
         unsigned int r;
-        //- r = (seed_ ^ ((seed_ << (B - 5)) | (seed_ >> 2))) & M;
+        // r = (seed_ ^ ((seed_ << (B - 5)) | (seed_ >> 2))) & M;
         r = (uint8_t)((seed_ ^ ((seed_ << (B - 2)))) & M);
         ++seed_;
         return r;
@@ -695,7 +692,7 @@ class Timer {
             dur.min = (int8_t)qr.rem;
             qr = lldiv(qr.quot, 24);
             dur.hour = (int8_t)qr.rem;
-            dur.day = qr.quot & 0x7f; // TODO: perhaps few days enough
+            dur.day = qr.quot & 0x7f;  // TODO: perhaps few days enough
         } else { }
 
         return dur;
@@ -717,8 +714,8 @@ class Console {
   public:
     enum { LAST_VALUE = 0xffff };
   public:
-    Console() : interrupted_(0), text_attrib_(0), oldcp_(0), oldMode_(0),
-        cursor_size(0),
+    Console() : top_(0), height_(-1), interrupted_(0),
+        text_attrib_(0), oldcp_(0), oldMode_(0), cursor_size(0),
         input_(INVALID_HANDLE_VALUE), output_(INVALID_HANDLE_VALUE),
         oldout_(INVALID_HANDLE_VALUE), conout_(INVALID_HANDLE_VALUE)
     {
@@ -748,7 +745,7 @@ class Console {
         case CTRL_BREAK_EVENT:
             Beep(900, 200);
             // printf("Ctrl-Break event\n\n");
-            retval = FALSE;;
+            retval = FALSE;
             break;
 
         // CTRL-CLOSE: confirm that the user wants to exit.
@@ -762,19 +759,19 @@ class Console {
         case CTRL_LOGOFF_EVENT:
             Beep(1000, 200);
             // printf("Ctrl-Logoff event\n\n");
-            retval = FALSE;;
+            retval = FALSE;
             ++interrupted_;
             break;
 
         case CTRL_SHUTDOWN_EVENT:
             Beep(750, 500);
             // printf("Ctrl-Shutdown event\n\n");
-            retval = FALSE;;
+            retval = FALSE;
             ++interrupted_;
             break;
 
         default:
-            retval = FALSE;;
+            retval = FALSE;
             break;
         }
 
@@ -782,9 +779,9 @@ class Console {
 
         if ((in == INVALID_HANDLE_VALUE) || (in == NULL)) {
             dprint("CtrlHandler(%lu): error(%lu)", ctrl, GetLastError());
-            FreeConsole(); // TODO: is FreeConsole() a bad idea?
+            FreeConsole();  // TODO: is FreeConsole() a bad idea?
         } else {
-            CloseHandle(in); // NOTE: forces time out in ReadConsoleInput()
+            CloseHandle(in);  // NOTE: forces time out in ReadConsoleInput()
         }
 
         // TODO: inter-locked-functions may be good interrupted_, since
@@ -819,7 +816,7 @@ class Console {
         VERIFYF(GetStdHandle) output_ = GetStdHandle(STD_OUTPUT_HANDLE);
         oldcp_ = GetConsoleOutputCP();
         SetConsoleOutputCP(65001);
-        SaveColor();
+        SaveState();
         GetConsoleMode(input_, &oldMode_);
         DWORD dwNewMode = oldMode_ | ENABLE_MOUSE_INPUT;
         dwNewMode &= ~(DWORD)ENABLE_QUICK_EDIT_MODE;
@@ -836,22 +833,17 @@ class Console {
         ShowCursor();
     }
 
-    //x HANDLE Input()
-    //x {
-    //x     return input_;
-    //x }
-
     void SaveBuffer()
     {
         oldout_ = GetStdHandle(STD_OUTPUT_HANDLE);
         output_ = CreateConsoleScreenBuffer(
-            GENERIC_READ |           // read/write access
+            GENERIC_READ |            // read/write access
             GENERIC_WRITE,
             FILE_SHARE_READ |
-            FILE_SHARE_WRITE,        // shared
-            NULL,                    // default security attributes
-            CONSOLE_TEXTMODE_BUFFER, // must be TEXTMODE
-            NULL);                   // reserved; must be NULL
+            FILE_SHARE_WRITE,         // shared
+            NULL,                     // default security attributes
+            CONSOLE_TEXTMODE_BUFFER,  // must be TEXTMODE
+            NULL);                    // reserved; must be NULL
 
         if (output_ == INVALID_HANDLE_VALUE) {
             printf("CreateConsoleScreenBuffer failed - (%lu)\n", GetLastError());
@@ -866,6 +858,7 @@ class Console {
         CONSOLE_SCREEN_BUFFER_INFO csbi;
         GetConsoleScreenBufferInfo(output_, &csbi);
         csbi.dwSize.Y++;
+        // dprint("SaveBuffer: csbi.dwSize.Y=%d", csbi.dwSize.Y);
         SetConsoleScreenBufferSize(output_, csbi.dwSize);
 
         if (!SetConsoleActiveScreenBuffer(output_)) {
@@ -928,7 +921,7 @@ class Console {
             return 1;
         case WAIT_ABANDONED:
         case WAIT_FAILED:
-        default: // TODO: to check recoverable or not and to act on it
+        default:  // TODO: to check recoverable or not and to act on it
             // dprint("wait for input failed with error code %lu", (DWORD)GetLastError());
             break;
         }
@@ -944,6 +937,12 @@ class Console {
     void MoveTo(unsigned int x, unsigned int y)
     {
         COORD coord = {(SHORT)x, (SHORT)y};
+        coord.Y += top_;
+
+        if (coord.Y >= height_) {
+            coord.Y = height_;
+        }
+
         SetConsoleCursorPosition(output_, coord);
     }
 
@@ -952,11 +951,76 @@ class Console {
         SetConsoleTextAttribute(output_, (WORD)color);
     }
 
-    void SaveColor()
+    void SaveState()
     {
+        // saves color, cursor position and buffer height
         CONSOLE_SCREEN_BUFFER_INFO csbi;
         GetConsoleScreenBufferInfo(output_, &csbi);
         text_attrib_ = csbi.wAttributes;
+        top_ = csbi.dwCursorPosition.Y;
+        height_ = csbi.dwSize.Y;
+    }
+
+    short ResetCursorPosition(short top)
+    {
+        // only y value is handled
+        if (top >= 0) {
+            return (top_ = (SHORT)top);
+        } else {
+            CONSOLE_SCREEN_BUFFER_INFO csbi;
+            GetConsoleScreenBufferInfo(output_, &csbi);
+            return (top_ = csbi.srWindow.Top);
+        }
+    }
+
+    void Resize(int rows) {
+        // only y value is handled
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        GetConsoleScreenBufferInfo(output_, &csbi);
+
+        short height = csbi.dwSize.Y;
+        short top = csbi.srWindow.Top;
+        short bottom = csbi.srWindow.Bottom;
+
+        if ((rows >= csbi.dwMaximumWindowSize.Y) || (rows <= 1)) {
+            // TODO: assert, what if dwMaximumWindowSize is less?
+            // DPRINT("((rows >= csbi.dwMaximumWindowSize.Y) || (rows <= 1))");
+            return;
+        }
+
+        if ((bottom - top) >= rows) {
+            // console can diplay full grid
+            // DPRINT("((bottom - top) >= rows)");
+        } else {
+            if (height >= (top + rows)) {
+                // good
+            } else {
+                top = height - (SHORT)rows;
+            }
+
+            SMALL_RECT srctWindow;
+            srctWindow.Top = top;  // move top saved y-top-position
+            srctWindow.Bottom = top+(SHORT)rows;
+            srctWindow.Left = 0;
+            srctWindow.Right = csbi.srWindow.Right - csbi.srWindow.Left;
+
+            SetConsoleWindowInfo(output_, TRUE, &srctWindow);
+            // DPRINT("%d %d / %d", top_, srctWindow.Top, srctWindow.Bottom);
+        }
+    }
+
+    void Clear()
+    {
+        // only y value is handled
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        GetConsoleScreenBufferInfo(output_, &csbi);
+
+        short top = csbi.srWindow.Top;
+        short bottom = csbi.srWindow.Bottom;
+
+        for (int i = 0; i < (bottom - top); i++) {
+            printf("\n");
+        }
     }
 
     void ResetColor()
@@ -996,9 +1060,10 @@ class Console {
         ZeroMemory(&sbi, sizeof(sbi));
         sbi.cbSize = sizeof(sbi);
 
-        HWND hwnd = GetConsoleWindow();
         RECT r;
+        HWND hwnd = GetConsoleWindow();
         GetWindowRect(hwnd, &r);
+
         if (GetConsoleScreenBufferInfoEx(output_, &sbi)) {
             memcpy(sbi.ColorTable, ct, sizeof(COLORREF) * 16);
 
@@ -1007,8 +1072,8 @@ class Console {
 
             SetConsoleScreenBufferInfoEx(output_, &sbi);
 
-            MoveWindow(hwnd, r.left, r.top,
-                       r.right - r.left, r.bottom - r.top, TRUE);
+            // TODO: remove MoveWindow()/UpdateWindow() and test
+            MoveWindow(hwnd, r.left, r.top, r.right - r.left, r.bottom - r.top, TRUE);
             UpdateWindow(hwnd);
         } else { }
     }
@@ -1068,7 +1133,7 @@ class Console {
     {
         if (str && *str) {
         } else {
-            return 0; // TODO: assert
+            return 0;  // TODO: assert
         }
 
         DWORD n;
@@ -1130,19 +1195,19 @@ class Console {
 
         // Copy the block from the screen buffer to the buf
         ReadConsoleOutput(
-            output_,        // screen buffer to read from
-            buf,      // buffer to copy into
+            output_,    // screen buffer to read from
+            buf,        // buffer to copy into
             buf_size,   // col-row size of buf
             buf_coord,  // top left dest. cell in buf
-            &src); // screen buffer source rectangle
+            &src);      // screen buffer source rectangle
 
         // Copy from the buf to the screen buffer.
         WriteConsoleOutput(
-            output_, // screen buffer to write to
+            output_,    // screen buffer to write to
             buf,        // buffer to copy from
-            buf_size,     // col-row size of buf
-            buf_coord,    // top left src cell in buf
-            &dst);  // dest. screen buffer rectangle
+            buf_size,   // col-row size of buf
+            buf_coord,  // top left src cell in buf
+            &dst);      // dest. screen buffer rectangle
 
 #ifndef USE_VLA_
         delete[] buf;
@@ -1154,6 +1219,8 @@ class Console {
     DISALLOW_COPY_AND_ASSIGN(Console);
 
   private:
+    SHORT top_;
+    SHORT height_;
     short interrupted_;
     WORD text_attrib_;
     UINT oldcp_;
@@ -1230,6 +1297,7 @@ class Stripe {
     ~Stripe() { }
 
 #if 0
+    // code below can be used for debugging the class
     void DbgPrintM()
     {
         for (int r = 0; r < N; ++r) {
@@ -1295,7 +1363,7 @@ class Stripe {
             } else {
                 printf("%s", ".");
             }
-        } // */
+        }  // */
 
         char s[N + 2] = { 0 };
         for (int i = 0; i < N; ++i) {
@@ -1341,7 +1409,7 @@ class Stripe {
                     } else {
                         A[i] = A[j];
                         A[j] = 0;
-                        ++m; // m += A[i] ? 1 : 0;
+                        ++m;  // m += A[i] ? 1 : 0;
                         i += step_;
                     }
                 }
@@ -1354,9 +1422,9 @@ class Stripe {
                     A[c]++;
                     scorer(1 << A[c]);
                     A[c] |= 0x80u;
-                    A[c + step_] = 0; //
+                    A[c + step_] = 0;  //
                     m += (A[c] == (X800 | 0x80u)) ? 2048u : 1u;
-                } else { /* A[c] = 0; */ } // A[c + step_] = 0;
+                } else { /* A[c] = 0; */ }  // A[c + step_] = 0;
 
                 int i;
                 for (i = c + step_; within(i, ec); i += step_) {
@@ -1379,10 +1447,12 @@ class Stripe {
             case ROW_R2L_STRIPE: return a_[stripe_][i];
             case COL_D2U_STRIPE: return a_[i][stripe_];
             default: DPRINT("Stripe: incorrect type '%d'\n", type_);
-                     break; // TODO: to assert
+                     break;  // TODO: to assert
             }
         } else { }
-        DPRINT("A[%d] ?\n", i);
+
+        // DPRINT("A[%d] ?\n", i);
+
         return x_;  // TODO: to assert
     }
 
@@ -1400,15 +1470,15 @@ class Stripe {
 };
 
 class Matrix {
-    //-     column 0 1 2 3
-    //-          +----------> X
-    //-    row 0 | 0 1 2 3
-    //-    row 1 | 4 5 6 7
-    //-    row 2 | 8 9 A B
-    //-    row 3 | C D E F
-    //-          v
-    //-          Y
-    //-
+    //     column 0 1 2 3
+    //          +----------> X
+    //    row 0 | 0 1 2 3
+    //    row 1 | 4 5 6 7
+    //    row 2 | 8 9 A B
+    //    row 3 | C D E F
+    //          v
+    //          Y
+    //
   public:
     explicit Matrix(uint8_t (&aa)[N][N])
         : aa_(aa)
@@ -1558,38 +1628,42 @@ class Grid {
 
     void DrawGrid()
     {
-        //-
-        //-    ┏━━━┯━━━┓   ╔═══╗  ┏━━━┓  ┌───┐
-        //-    ┃   │   ┃   ║   ║  ┃   ┃  │   │   ___▌___▐___
-        //-    ┠───┼───┨   ╚═══╝  ┗━━━┛  └───┘
-        //-    ┃   │   ┃
-        //-    ┗━━━┷━━━┛
-        //-               1         2         3
-        //-     0123456789012345678901234567890123456
-        //-   0 +--------+--------+--------+--------+
-        //-   1 |.      .|.      .|.      .|.      .|
-        //-   2 |.   2  .|.  64  .|. 128  .|. 1024 .|
-        //-   3 |.      .|.      .|.      .|.      .|
-        //-   4 +--------+--------+--------+--------+
-        //-   5 |        |        |        |        |
-        //-   6 |        |        |        |        |
-        //-   7 |        |        |        |        |             1         2
-        //-   8 +--------+--------+--------+--------+   0123456789012345678901
-        //-   9 |        |        |        |        |
-        //-  10 |        |        |        |        |   (46,14)
-        //-   1 |        |        |        |        |    /
-        //-   2 +--------+--------+--------+--------+   +--------------------+
-        //-   3 |        |        |        |        |   |      You WON!      |
-        //-   4 |        |        |        |        |   +--------------------+
-        //-   5 |        |        |        |        |
-        //-   6 +--------+--------+--------+--------+   > Keep Going: Yes / No
-        //-
+        //
+        //  Board layout
+        //  ------------
+        //
+        //  (GRID_X,GRID_Y) = (5,2)
+        //    \           1         2         3
+        //     \0123456789012345678901234567890123456
+        //    0 +--------+--------+--------+--------+
+        //    1 |.      .|.      .|.      .|.      .|
+        //    2 |.   2  .|.  64  .|. 128  .|. 1024 .|
+        //    3 |.      .|.      .|.      .|.      .|
+        //    4 +--------+--------+--------+--------+
+        //    5 |        |        |        |        |
+        //    6 |        |        |        |        |
+        //    7 |        |        |        |        |             1         2
+        //    8 +--------+--------+--------+--------+   0123456789012345678901
+        //    9 |        |        |        |        |
+        //   10 |        |        |        |        |   (MESG_X,MESG_Y) = (46,14)
+        //    1 |        |        |        |        |    /
+        //    2 +--------+--------+--------+--------+   +--------------------+
+        //    3 |        |        |        |        |   |      You WON!      |
+        //    4 |        |        |        |        |   +--------------------+
+        //    5 |        |        |        |        |
+        //    6 +--------+--------+--------+--------+   > Keep Going: Yes / No
+        //
+        //  Board drawing characters
+        //  ------------------------
+        //     ┏━━━┯━━━┓   ╔═══╗  ┏━━━┓  ┌───┐
+        //     ┃   │   ┃   ║   ║  ┃   ┃  │   │   ___▌___▐___
+        //     ┠───┼───┨   ╚═══╝  ┗━━━┛  └───┘
+        //     ┃   │   ┃
+        //     ┗━━━┷━━━┛
+        //
 
         con.MoveTo(0, 0);
 
-        //x  con.SetColor(0x08u);
-        //x  con.MoveTo(GRID_X, GRID_Y);
-        //x  con.Write("%s", text_.grid_top_line);
         con.Write(0x08u, GRID_X, GRID_Y, text_.grid_top_line);
 
         unsigned int y;
@@ -1607,9 +1681,6 @@ class Grid {
         con.Write(text_.grid_bot_line);
 
         PatchGrid(N);
-
-        //x con.MoveTo(MESG_X, 4);
-        //x con.Write("%-8s   %s", "Score", "Time");
 
         con.Write(MESG_X, 4, "Score      Time");
     }
@@ -1706,7 +1777,7 @@ class Grid {
     {
         con.SetColor(07);
         con.MoveTo(MESG_X, MESG_Y + 0);
-        //-          " +--------------------+ ");
+        //        " +--------------------+ ");
         con.Write("                        ");
         con.MoveTo(MESG_X, MESG_Y + 1);
         con.Write("                        ");
@@ -1714,7 +1785,7 @@ class Grid {
         con.Write("                        ");
 
         con.MoveTo(MESG_X, MESG_Y + 4);
-        //-          ". Keep Going? .Yes. / No");
+        //        ". Keep Going? .Yes. / No");
         con.Write("                        ");
     }
 
@@ -1810,6 +1881,7 @@ class Grid {
     }
 
 #if 0
+    // old code with macros
     void PrintNumber(unsigned int n, unsigned int i)
     {
         unsigned int v = (n & 0x7fu);
@@ -1821,17 +1893,17 @@ class Grid {
 #define m ((v/1024/1024))
 
         switch (n & 0x7fu) {
-        CASE1( 0): PRINTLINE(i,"   %u  ", 0u); break; // 0       > |   0  |
-        CASE3( 1): PRINTLINE(i,"   %u  ", v); break; // 2-8      > |   #  |
-        CASE3( 4): PRINTLINE(i,"  %u  ", v); break; // 16-64     > |  ##  |
-        CASE3( 7): PRINTLINE(i,"  %u ", v); break; // 128-512    > |  ### |
-        CASE4(10): PRINTLINE(i," %u ", v); break; // 1024-8192   > | #### |
-        CASE3(14): PRINTLINE(i,"  %uK ", k); break; // 16K-64K   > |  ### |
-        CASE3(17): PRINTLINE(i," %uK ", k); break; // 128K-512K  > | #### |
-        CASE4(20): PRINTLINE(i,"  %uM  ", m); break; // 1M-8M    > |  ##  |
-        CASE3(24): PRINTLINE(i,"  %uM ", m); break; // 16M-64M   > |  ### |
-        CASE3(27): PRINTLINE(i," %uM ", m); break; // 128M-512M  > | #### |
-        default: PRINTLINE(i,"%s", "  ??  "); break; // overflow > |  ??  |
+        CASE1( 0): PRINTLINE(i,"   %u  ", 0u); break;  // 0       > |   0  |
+        CASE3( 1): PRINTLINE(i,"   %u  ", v); break;  // 2-8      > |   #  |
+        CASE3( 4): PRINTLINE(i,"  %u  ", v); break;  // 16-64     > |  ##  |
+        CASE3( 7): PRINTLINE(i,"  %u ", v); break;  // 128-512    > |  ### |
+        CASE4(10): PRINTLINE(i," %u ", v); break;  // 1024-8192   > | #### |
+        CASE3(14): PRINTLINE(i,"  %uK ", k); break;  // 16K-64K   > |  ### |
+        CASE3(17): PRINTLINE(i," %uK ", k); break;  // 128K-512K  > | #### |
+        CASE4(20): PRINTLINE(i,"  %uM  ", m); break;  // 1M-8M    > |  ##  |
+        CASE3(24): PRINTLINE(i,"  %uM ", m); break;  // 16M-64M   > |  ### |
+        CASE3(27): PRINTLINE(i," %uM ", m); break;  // 128M-512M  > | #### |
+        default: PRINTLINE(i,"%s", "  ??  "); break;  // overflow > |  ??  |
         }
 #undef CASE1
 #undef CASE3
@@ -1859,7 +1931,7 @@ class Grid {
             // 0     2     4     8    16    32    64   128   256   512
             0x08, 0x9f, 0x6f, 0x5f, 0x4f, 0x4f, 0x3f, 0x3f, 0x2f, 0x2f,
             0x17, 0xcf, 0xdf, 0xb0, 0xe6, 0xe2, 0xf0, 0xfc, 0xfc, 0xfc,
-            0xac // 2k    4k    8k
+            0xac  // 2k    4k    8k
         };
 
         if (n < (sizeof(cid) / sizeof(cid[0]))) {
@@ -1876,57 +1948,77 @@ class Grid {
         switch (s) {
         case 1:
             ct[0]  = 0x00182028;
-            ct[1]  = 0x00133af1;  //- #f13a13
-            ct[2]  = 0x000068ff;  //- #ff6800
-            ct[3]  = 0x005c7aff;  //- #ff7a5c
-            ct[4]  = 0x00008eff;  //- #ff8e00
-            ct[5]  = 0x0000b3ff;  //- #ffb300
-            ct[6]  = 0x0000c8f4;  //- #f4c800
+            ct[1]  = 0x00133af1;  // #f13a13
+            ct[2]  = 0x000068ff;  // #ff6800
+            ct[3]  = 0x005c7aff;  // #ff7a5c
+            ct[4]  = 0x00008eff;  // #ff8e00
+            ct[5]  = 0x0000b3ff;  // #ffb300
+            ct[6]  = 0x0000c8f4;  // #f4c800
             ct[7]  = cto[7];
             ct[8]  = cto[8];
-            ct[9]  = 0x0062a2ce;  //- #cea262
-            ct[10] = 0x0000aa93;  //- #93aa00
-            ct[11] = 0x00347d00;  //- #007d34
-            ct[12] = 0x001000ff;  //- #ff0010
-            ct[13] = 0x008a5300;  //- #00538a
-            ct[14] = 0x007a3753;  //- #53377a
+            ct[9]  = 0x0062a2ce;  // #cea262
+            ct[10] = 0x0000aa93;  // #93aa00
+            ct[11] = 0x00347d00;  // #007d34
+            ct[12] = 0x001000ff;  // #ff0010
+            ct[13] = 0x008a5300;  // #00538a
+            ct[14] = 0x007a3753;  // #53377a
             ct[15]  = cto[15];
             break;
         case 2:
             ct[0]  = 0x00251810;
-            ct[1]  = 0x00f990c4 - 0x444444; //- #c490f9
-            ct[2]  = 0x00f99090 - 0x444444; //- #9090f9
-            ct[3]  = 0x00f9c490 - 0x444444; //- #90c4f9
-            ct[4]  = 0x00f9f990 - 0x444444; //- #90f9f9
-            ct[5]  = 0x00c4f990 - 0x444444; //- #90f9c4
-            ct[6]  = 0x0090f990 - 0x444444; //- #90f990
+            ct[1]  = 0x00f990c4 - 0x444444;  // #c490f9
+            ct[2]  = 0x00f99090 - 0x444444;  // #9090f9
+            ct[3]  = 0x00f9c490 - 0x444444;  // #90c4f9
+            ct[4]  = 0x00f9f990 - 0x444444;  // #90f9f9
+            ct[5]  = 0x00c4f990 - 0x444444;  // #90f9c4
+            ct[6]  = 0x0090f990 - 0x444444;  // #90f990
             ct[7]  = cto[7];
             ct[8]  = cto[8];
-            ct[9]  = 0x0090f9c4 - 0x444444; //- #c4f990
-            ct[10] = 0x0090f9f9 - 0x444444; //- #f9f990
-            ct[11] = 0x0090c4f9 - 0x444444; //- #f9c490
-            ct[12] = 0x009090f9 - 0x444444; //- #f99090
-            ct[13] = 0x00f990f9 - 0x444444; //- #f990f9
-            ct[14] = 0x00c490f9 - 0x444444; //- #f990c4
+            ct[9]  = 0x0090f9c4 - 0x444444;  // #c4f990
+            ct[10] = 0x0090f9f9 - 0x444444;  // #f9f990
+            ct[11] = 0x0090c4f9 - 0x444444;  // #f9c490
+            ct[12] = 0x009090f9 - 0x444444;  // #f99090
+            ct[13] = 0x00f990f9 - 0x444444;  // #f990f9
+            ct[14] = 0x00c490f9 - 0x444444;  // #f990c4
             ct[15]  = cto[15];
             break;
+#if 0
         case 3:
-            ct[0]  = 0x000000u + 0x201010u; //      0
-            ct[1]  = 0x800000u + 0x002828u; // 800000
-            ct[2]  = 0x008000u + 0x280028u; //   8000
-            ct[3]  = 0x808000u + 0x000028u; // 808000
-            ct[4]  = 0x000080u + 0x282800u; //     80
-            ct[5]  = 0x800080u + 0x002800u; // 800080
-            ct[6]  = 0x008080u + 0x280000u; //   8080
-            ct[7]  = 0xc0c0c0u - 0x000000u; // c0c0c0
-            ct[8]  = 0x808080u - 0x282828u; // 808080
-            ct[9]  = 0xff0000u - 0x330000u + 0x002222u; // ff0000
-            ct[10] = 0x00ff00u - 0x003300u + 0x220022u; //   ff00
-            ct[11] = 0xffff00u - 0x333300u + 0x000022u; // ffff00
-            ct[12] = 0x0000ffu - 0x000022u + 0x222200u; //     ff
-            ct[13] = 0xff00ffu - 0x330022u + 0x002200u; // ff00ff
-            ct[14] = 0x00ffffu - 0x003322u + 0x220000u; //   ffff
-            ct[15] = 0xffffffu - 0x111111u; ;
+            ct[0]  = 0x000000u + 0x201010u;  //      0
+            ct[1]  = 0x800000u + 0x002828u;  // 800000
+            ct[2]  = 0x008000u + 0x280028u;  //   8000
+            ct[3]  = 0x808000u + 0x000028u;  // 808000
+            ct[4]  = 0x000080u + 0x282800u;  //     80
+            ct[5]  = 0x800080u + 0x002800u;  // 800080
+            ct[6]  = 0x008080u + 0x280000u;  //   8080
+            ct[7]  = 0xc0c0c0u - 0x000000u;  // c0c0c0
+            ct[8]  = 0x808080u - 0x282828u;  // 808080
+            ct[9]  = 0xff0000u - 0x330000u + 0x002222u;  // ff0000
+            ct[10] = 0x00ff00u - 0x003300u + 0x220022u;  //   ff00
+            ct[11] = 0xffff00u - 0x333300u + 0x000022u;  // ffff00
+            ct[12] = 0x0000ffu - 0x000022u + 0x222200u;  //     ff
+            ct[13] = 0xff00ffu - 0x330022u + 0x002200u;  // ff00ff
+            ct[14] = 0x00ffffu - 0x003322u + 0x220000u;  //   ffff
+            ct[15] = 0xffffffu - 0x111111u;
+            break;
+#endif
+        case 3:
+            ct[0]  = 0x222827u;
+            ct[1]  = 0x9e5401u;
+            ct[2]  = 0x04aa74u;
+            ct[3]  = 0xa6831au;
+            ct[4]  = 0x3403a7u;
+            ct[5]  = 0x9c5689u;
+            ct[6]  = 0x49b6b6u;
+            ct[7]  = 0xcacacau;
+            ct[8]  = 0x7c7c7cu;
+            ct[9]  = 0xf58303u;
+            ct[10] = 0x06d08du;
+            ct[11] = 0xe5c258u;
+            ct[12] = 0x4b04f3u;
+            ct[13] = 0xb87da8u;
+            ct[14] = 0x81ccccu;
+            ct[15] = 0xffffffu;
             break;
         default:
             return;
@@ -1939,9 +2031,7 @@ class Grid {
     {
         char buf[32] = { };
         int unused = snprintf(buf, sizeof(buf) - 1, "%-8d ", score);
-        (void)unused;
-        //x con.SetColor(0xfu);
-        //x con.MoveTo(MESG_X, 5);
+        (void)unused;  // TODO: assert?
 
         con.Write(0xfu, MESG_X, 5, buf);
     }
@@ -1953,36 +2043,39 @@ class Grid {
         con.SetColor((show_ms ? 0x7u : 0x8u));
         con.MoveTo(MESG_X + 10, 5);
         if (dur.day > 0) {
-            //x con.Write(" %d day%s", dur.day, (dur.day > 1 ? "s" : ""));
-            //x con.Write(" %02d", dur.hour);
             unused = snprintf(buf, sizeof(buf) - 1, " %d day%s %02d",
                      dur.day, (dur.day > 1 ? "s" : ""), dur.hour);
-            (void)unused;
+            (void)unused;  // TODO: assert?
             con.Write(buf);
         } else {
             if (dur.hour > 0) {
-                //x con.Write(" %02d", dur.hour);
                 unused = snprintf(buf, sizeof(buf) - 1, " %02d", dur.hour);
-                (void)unused;
+                (void)unused;  // TODO: assert?
                 con.Write(buf);
             } else {
                 con.Write(" ..");
             }
         }
 
-        //x con.Write(":%02d:%02d", dur.min, dur.sec);
         unused = snprintf(buf, sizeof(buf) - 1, ":%02d:%02d", dur.min, dur.sec);
-        (void)unused;
+        (void)unused;  // TODO: assert?
         con.Write(buf);
 
         if (show_ms) {
-            //x con.Write(".%03d ", dur.ms);
             unused = snprintf(buf, sizeof(buf) - 1, ".%03d ", dur.ms);
-            (void)unused;
+            (void)unused;  // TODO: assert?
             con.Write(buf);
         } else {
             con.Write("     ");
         }
+    }
+
+    int GetMinHeight()
+    {
+        enum {
+            BOARD_HEIGHT = GRID_Y + N * 4 + 1
+        };
+        return BOARD_HEIGHT;
     }
 
   private:
@@ -2018,7 +2111,7 @@ class Grid {
 
 union Board4x4 {
     uint8_t ac[N][N];
-    uint64_t al[N64]; // since N = 4
+    uint64_t al[N64];  // since N = 4
 };
 
 static_assert((sizeof(Board4x4) >= N * N), "Board4x4: error in size");
@@ -2054,7 +2147,7 @@ enum {
 
 class Mapper {
   public:
-    Mapper() : r(-1), c(-1) { }
+    Mapper(int y_top = 0) : r(-1), c(-1), top(y_top) { }
     ~Mapper() { }
 
     int FindCell(int x, int y)
@@ -2068,11 +2161,7 @@ class Mapper {
             YES_X2 = Grid::MESG_X + 18,
         };
 
-        // con.SetColor(0x4f);
-        // con.MoveTo(x, y);
-        // printf(" ");
-
-        if (y == Grid::MESG_Y + 4) {
+        if (y == Grid::MESG_Y + 4 + top) {
             if ((x >= YES_X1) && (x <= YES_X2)) {
                 // DPRINT("mouse yes");
                 return GAME_PERSIST;
@@ -2086,7 +2175,7 @@ class Mapper {
         }
 
         x -= Grid::GRID_X;
-        y -= Grid::GRID_Y;
+        y -= Grid::GRID_Y + top;
 
         if ((x <= 0) || (y <= 0) || (x >= N * W) || (y >= N * H)) {
             r = c = -1;
@@ -2108,7 +2197,7 @@ class Mapper {
             r = y / H;
         }
 
-        //- DPRINT("mouse cell: %3d %3d", c, r);
+        // DPRINT("mouse cell: %3d %3d", c, r);
 
         return (0x10000 + r * 0x100 + c);
     }
@@ -2119,6 +2208,7 @@ class Mapper {
   private:
     int r;
     int c;
+    int top;
     // previous position (xc,xr) is needed for tracing mouse path
     // int xr;
     // int xc;
@@ -2224,9 +2314,9 @@ class Puzzle2048 {
         unsigned int rand_row = 0;
         unsigned int rand_col = 0;
         bool highlight = false;
-        InputReader ir;
 
-        InitConsole(s, d);
+        short y_top = InitConsole(s, d);
+        InputReader ir(y_top);
         Start2048();
 
         for (; k == GAME_NOOP; k = ir.GetInput()) {
@@ -2237,7 +2327,7 @@ class Puzzle2048 {
 
         for (; k != GAME_ABORT; k = ir.GetInput(time_keeper_)) {
             switch (k) {
-            case GAME_ERROR: // TODO: report error and exit or try recover?
+            case GAME_ERROR:  // TODO: report error and exit or try recover?
             case GAME_NOOP:
                 continue;
             case GAME_ABORT:
@@ -2255,7 +2345,7 @@ class Puzzle2048 {
                 grid_.ShowMatrix(matrix);
                 continue;
             default:
-                if (k >= 0x10000) { // cheating ...
+                if (k >= 0x10000) {  // cheating ...
                     int r = (k / 0x100) & 0xff;
                     int c = k & 0xff;
                     uint8_t cur = 0;
@@ -2307,7 +2397,7 @@ class Puzzle2048 {
                     state = 0;
                     break;
                 case GAME_STOP:
-                    break; // see above
+                    break;  // see above
                 case MOVE_LEFT:
                 case MOVE_RIGHT:
                 case MOVE_UP:
@@ -2318,7 +2408,6 @@ class Puzzle2048 {
                     continue;
                 }
             } else {
-
                 if (m) {
                     Save();
                 } else { }
@@ -2367,13 +2456,13 @@ class Puzzle2048 {
                 case GAME_WON:
                     state = 0x20;
                     time_keeper_.Pause();
-                    grid_.ShowMessage(true); //- won
+                    grid_.ShowMessage(true);  // won
                     continue;
 
                 case GAME_LOST:
                     state = 0x10;
                     time_keeper_.Pause();
-                    grid_.ShowMessage(false); //- lost
+                    grid_.ShowMessage(false);  // lost
                     continue;
 #endif
                 default:
@@ -2407,7 +2496,7 @@ class Puzzle2048 {
                     state = 0x20;
                     time_keeper_.Pause();
                     grid_.ShowScore(score_);
-                    grid_.ShowMessage(true); //- won
+                    grid_.ShowMessage(true);  // won
                     grid_.ShowMatrix(matrix);
                     ResetHighlight();
                     continue;
@@ -2420,7 +2509,7 @@ class Puzzle2048 {
                     highlight = (m > 0);
                 } else {
                     if (highlight) {
-                        grid_.ShowCell(matrix(rand_row, rand_col), rand_row, rand_col, false); // reset
+                        grid_.ShowCell(matrix(rand_row, rand_col), rand_row, rand_col, false);  // reset
                         highlight = false;
                     } else { }
                 }
@@ -2430,7 +2519,7 @@ class Puzzle2048 {
                     m = 0;
                     state = 0x10;
                     time_keeper_.Pause();
-                    grid_.ShowMessage(false); //- lost
+                    grid_.ShowMessage(false);  // lost
                 }
             }
         }
@@ -2451,20 +2540,16 @@ class Puzzle2048 {
 
         char buf[16] = { };
         for (unsigned int i = 0; i < 16; ++i) {
-            con.Write(" "); //x con.Write("%c", ' ');
+            con.Write(" ");
             for (unsigned int j = 0; j < 16; ++j) {
                 unsigned int color = ((i * 16) + j) & 0xffu;
-                //x con.SetColor(color & 0xff);
-                //x con.Write(" %2x ", 0xff & color);
                 unused = snprintf(buf, sizeof(buf) - 1, " %2x ", color);
-                (void)unused;
+                (void)unused;  // TODO: assert?
                 con.Write(color, buf);
             }
 
-            //x con.SetColor(0x07);
-            //x con.Write(" - %06lx\n", ct[i]);
             unused = snprintf(buf, sizeof(buf) - 1, " - %06lx\n", ct[i]);
-            (void)unused;
+            (void)unused;  // TODO: assert?
             con.Write(0x07u, buf);
         }
 
@@ -2514,10 +2599,10 @@ class Puzzle2048 {
         InputReader ir;
         while ((k = ir.GetInput()) != GAME_ABORT) {
             if (k == 'W') {
-                grid_.ShowMessage(true); //- won
+                grid_.ShowMessage(true);  // won
                 continue;
             } else if (k == 'E') {
-                grid_.ShowMessage(false); //- lost
+                grid_.ShowMessage(false);  // lost
                 continue;
             } else {
                 grid_.ClearMessage();
@@ -2540,11 +2625,11 @@ class Puzzle2048 {
             value_ += a;
         }
 
-        //int operator=(int n)
-        //{
-        //    value_ = n;
-        //    return value_;
-        //}
+        // int operator=(int n)
+        // {
+        //     value_ = n;
+        //     return value_;
+        // }
 
         operator int() const
         {
@@ -2566,8 +2651,8 @@ class Puzzle2048 {
 
     class InputReader {
       public:
-        InputReader()
-            : k_(0), xk_(0), t_(0), xt_(0), mapper_()
+        InputReader(short top=0)
+            : k_(0), xk_(0), t_(0), xt_(0), mapper_(top)
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
         // not supported ?
 #else
@@ -2603,7 +2688,7 @@ class Puzzle2048 {
             do {
                 if (con.ReadInput(inrec_)) {
                     switch (inrec_.EventType) {
-                    case 0: // NOTE: 0 is set by Console.ReadInput(). can be error
+                    case 0:  // NOTE: 0 is set by Console.ReadInput(). can be error
                         time_keeper();
                         continue;
                     case KEY_EVENT:
@@ -2714,7 +2799,7 @@ class Puzzle2048 {
                     } else {
                         DWORD& key = mer.dwControlKeyState;
                         if (key & LEFT_ALT_PRESSED) {
-                            return ret; // cheating :)
+                            return ret;  // cheating :)
                         } else { }
                     }
 #if 0
@@ -2738,19 +2823,33 @@ class Puzzle2048 {
         INPUT_RECORD inrec_;
     };
 
-    void InitConsole(int a, int d)
+    short InitConsole(int a, int d)
     {
         con.Acquire();
         grid_.SetGridMode(d);
+        int board_height = grid_.GetMinHeight();
+        con.Resize(board_height + 1);
+
+        short y_top;
+
         if (a & 0x4) {
             con.SaveBuffer();
-        } else { }
+            y_top = con.ResetCursorPosition(0);
+        } else {
+            con.Clear();
+            y_top = con.ResetCursorPosition(-1);
+        }
+
         con.SavePalette();
+
         if (a != '?') {
             grid_.SetColorScheme(a & 0x3);
         } else { }
+
         con.FlushInput();
         con.MoveTo(0, 0);
+
+        return y_top;
     }
 
     void ResetConsole(int a)
@@ -2779,10 +2878,6 @@ class Puzzle2048 {
             score_.Reset(0);
         } else {
             matrix.Reset(0);
-            //x unsigned int r = rng(N * N);
-            //x uint8_t v = GetNewValue(32, 0);
-            //x matrix.SetAt(r / N, r % N, v);
-            //x score_.Reset(1 << v);
             unsigned int r, c;
             AddNew(r, c);
             AddNew(r, c);
@@ -2874,7 +2969,7 @@ class Puzzle2048 {
                 for (unsigned int c = N; c--; (void)0) {
                     if (board_.ac[r][c] == 0) {
                         if (n == pos) {
-                            board_.ac[r][c] = v; // TODO
+                            board_.ac[r][c] = v;  // TODO
                             row = r;
                             col = c;
                         } else { }
@@ -2894,7 +2989,7 @@ class Puzzle2048 {
         //             |             |        |    |     |
         //      2 4 8 16     32 64 128  256 512 1024  2048
 
-        int r2, r4, r8; // ranges for 2, 4 and 8 respectively
+        int r2, r4, r8;  // ranges for 2, 4 and 8 respectively
 
 #define SET($r2, $r4, $r8, $x) \
         r2 = $r2; \
@@ -2942,13 +3037,13 @@ class Puzzle2048 {
         int r = 2;
 
         if (r2 > rnd) {
-            r = 1; // 2
+            r = 1;  // 2
         } else if ((r2 + r4) > rnd) {
-            r = 2; // 4
+            r = 2;  // 4
         } else if ((r2 + r4 + r8) > rnd) {
-            r = 3; // 8
+            r = 3;  // 8
         } else {
-            r = 4; // 16
+            r = 4;  // 16
         }
 
         return (uint8_t)r;
@@ -3141,18 +3236,18 @@ class AppInfo {
 #if defined(__GNUC__) || defined(_MSC_FULL_VER)
             BREAK_IF_ERROR(strcat_s(str, " ["), error);
 #endif
-#endif // __clang__
+#endif  // __clang__
 #if defined(__GNUC__)
             BREAK_IF_ERROR(strcat_s(str, "GCC/C++ "), error);
-#if defined(GCVER)
-            BREAK_IF_ERROR(strcat_s(str, STR1(GCVER)), error);
+#if defined(CC_STUB_GC_VER)
+            BREAK_IF_ERROR(strcat_s(str, STR1(CC_STUB_GC_VER)), error);
 #else
             BREAK_IF_ERROR(strcat_s(str, STR2(__GNUC__)), error);
             BREAK_IF_ERROR(strcat_s(str, STR2(__GNUC_MINOR__)), error);
             BREAK_IF_ERROR(strcat_s(str, STR1(__GNUC_PATCHLEVEL__)), error);
-#endif // GCVER
+#endif  // CC_STUB_GC_VER
 #if defined(__MINGW32__)
-#if defined(__MINGW64__)
+#if defined(__MINGW64_VERSION_MAJOR)
             BREAK_IF_ERROR(strcat_s(str, " [MinGW-w64 "), error);
             BREAK_IF_ERROR(strcat_s(str, STR2(__MINGW64_VERSION_MAJOR)), error);
             BREAK_IF_ERROR(strcat_s(str, STR1(__MINGW64_VERSION_MINOR)), error);
@@ -3161,14 +3256,14 @@ class AppInfo {
             BREAK_IF_ERROR(strcat_s(str, " [MinGW "), error);
             BREAK_IF_ERROR(strcat_s(str, STR2(__MINGW32_MAJOR_VERSION)), error);
             BREAK_IF_ERROR(strcat_s(str, STR1(__MINGW32_MINOR_VERSION)), error);
-#endif // __MINGW64__
+#endif  // __MINGW64__
             BREAK_IF_ERROR(strcat_s(str, "]"), error);
-#endif // __MINGW32__
-#endif // __GNUC__
+#endif  // __MINGW32__
+#endif  // __GNUC__
 #if defined(_MSC_FULL_VER)
             BREAK_IF_ERROR(strcat_s(str, "MSVC++ "), error);
-#if defined(VCVER)
-            BREAK_IF_ERROR(strcat_s(str, STR1(VCVER)), error);
+#if defined(CC_STUB_VC_VER)
+            BREAK_IF_ERROR(strcat_s(str, STR1(CC_STUB_VC_VER)), error);
 #else
             // VVRRPPPPP since VS 2005
             BREAK_IF_ERROR(strncat_s(str, STR1(_MSC_FULL_VER)+0, 2), error);
@@ -3176,15 +3271,17 @@ class AppInfo {
             BREAK_IF_ERROR(strncat_s(str, STR1(_MSC_FULL_VER)+2, 2), error);
             BREAK_IF_ERROR(strcat_s(str, "."), error);
             BREAK_IF_ERROR(strcat_s(str, STR1(_MSC_FULL_VER)+4), error);
-#endif // VCVER
-#endif // _MSC_FULL_VER
+#endif  // CC_STUB_VC_VER
+#endif  // _MSC_FULL_VER
 
 #if defined(__clang__)
 #if defined(__GNUC__) || defined(_MSC_FULL_VER)
             BREAK_IF_ERROR(strcat_s(str, "]"), error);
 #endif
-#endif // __clang__
+#endif  // __clang__
         } while (FALSE_CONDITION);
+
+#undef BREAK_IF_ERROR
 
         if (error) {
             return 0;
@@ -3195,8 +3292,8 @@ class AppInfo {
 
     const char* GetCompilerArgs()
     {
-#if defined(CC_STUB_OPTIONS)
-        return STR1(CC_STUB_OPTIONS);
+#if defined(CC_STUB_CONFIG)
+        return STR1(CC_STUB_CONFIG);
 #else
         return 0;
 #endif
@@ -3297,7 +3394,7 @@ class ArgParser {
 
     int show_option_help(int id)
     {
-        if ((id < 0) || (id >= LENGTH)) { // TODO: assert
+        if ((id < 0) || (id >= LENGTH)) {  // TODO: assert
             return 0;
         } else { }
 
@@ -3332,16 +3429,6 @@ class ArgParser {
         return 1;
     }
 
-    //x void set_help()
-    //x {
-    //x     help_ = 1;
-    //x }
-
-    //x void set_version()
-    //x {
-    //x     version_ = 1;
-    //x }
-
     int has_help_opt()
     {
         return help_;
@@ -3355,7 +3442,7 @@ class ArgParser {
   private:
     int get_short_arg(char* argv[], int pos, int argc)
     {
-        if (!(argv && (pos > 0) && (pos < argc))) { // TODO: assert
+        if (!(argv && (pos > 0) && (pos < argc))) {  // TODO: assert
             return -1;
         } else { }
 
@@ -3392,7 +3479,7 @@ class ArgParser {
 
     int get_long_arg(const char* arg)
     {
-        if (!arg) { // TODO: assert
+        if (!arg) {  // TODO: assert
             return -1;
         } else { }
 
@@ -3422,7 +3509,7 @@ class ArgParser {
                     }
                 } else {
                     if (*arg) {
-                        arg_def_[i].value = arg; // TODO: ignoring error, why?
+                        arg_def_[i].value = arg;  // TODO: ignoring error, why?
                     } else { }
                 }
                 if (negate) {
@@ -3445,7 +3532,7 @@ class ArgParser {
 
     int get_argument(const char* arg)
     {
-        if (!arg) { // TODO: assert
+        if (!arg) {  // TODO: assert
             return -1;
         } else { }
 
@@ -3466,7 +3553,7 @@ class ArgParser {
 
     int check_known_opt(const char* arg)
     {
-        if (!arg) { // TODO: assert
+        if (!arg) {  // TODO: assert
             return -1;
         } else { }
 
@@ -3511,11 +3598,11 @@ class ArgParser {
 
     size_t opt_equal(const char* option, const char* arg)
     {
-        if (!(option && arg && arg[2])) { // TODO: assert
+        if (!(option && arg && arg[2])) {  // TODO: assert
             return 0;
         } else { }
 
-        size_t len = strlen(option); // NOTE: length can be cached
+        size_t len = strlen(option);  // NOTE: length can be cached
         if (len > 0) {
             if (strncmp(option, (arg + 2), len) == 0) {
                 if (arg[len + 2] == '=') {
@@ -3545,8 +3632,8 @@ class ArgParser {
 #define OPT_CLRS (color_id, 1, 'c', "color", "0", "color scheme: 0, 1, 2 or 3")
 #define OPT_GRID (grid_type, 1, 'g', "grid", "unicode", "draw with ascii|unicode characters")
 #define OPT_WIPE (wipe_con, 0, 'w', "wipe", NULL, "wipes the display when exiting(default: do not wipe)")
-#define OPT_TEST (test_mode, 0, '\0', "test", NULL, "shows color, grid or tiles and exit")
-#define OPT_TILE (tile_set, 0, '\0', "tile-set", "1", "previews tiles, choices 1, 2 or 3")
+#define OPT_TEST (test_mode, 0, '\0', "test", NULL, "with '--color' shows color scheme and exit")
+#define OPT_TILE (tile_set, 1, '\0', "tile-set", "1", "previews grid/tiles, choices 1, 2 or 3")
 #define OPT_HELP (more_arg, 0, '\0', NULL, NULL, NULL)
 
 #define OPTS \
@@ -3700,14 +3787,14 @@ class ArgResolver {
             if ((arg_def_[id].value[0] == '?') &&
                 (arg_def_[id].value[1] == '\0')) {
                 help_ = 1;
-                return 1; // help option cannot be combined with others
+                return 1;  // help option cannot be combined with others
             } else if ((arg_def_[id].value[0] == 'h') &&
                        (arg_def_[id].value[1] == 'e') &&
                        (arg_def_[id].value[2] == 'l') &&
                        (arg_def_[id].value[3] == 'p') &&
                        (arg_def_[id].value[4] == '\0')) {
                 help_ = 1;
-                return 1; // help option cannot be combined with others
+                return 1;  // help option cannot be combined with others
             } else if ((arg_def_[id].value[0] == 'v') &&
                        (arg_def_[id].value[1] == 'e') &&
                        (arg_def_[id].value[2] == 'r') &&
@@ -3717,7 +3804,7 @@ class ArgResolver {
                        (arg_def_[id].value[6] == 'n') &&
                        (arg_def_[id].value[7] == '\0')) {
                 version_ = 1;
-                return 1; // version option cannot be combined with others
+                return 1;  // version option cannot be combined with others
             } else { }
             ++error_;
         } else { }
@@ -3794,14 +3881,14 @@ int get_option(int argc, char* argv[], struct option& opt)
     } while (FALSE_CONDITION)
 
     if (arg_parser.parse(argc, argv)) {
-        //- dump_arg_def(arg_def);
+        // dump_arg_def(arg_def);
 
         SHOW_HELP_VERSION(arg_parser);
 
         ArgResolver<sizeof(arg_def)/sizeof(arg_definition)> arg_resolver(opt, arg_def);
         int ret = arg_resolver.Resolve();
 
-        if (ret >= 0) { // help or version
+        if (ret >= 0) {  // help or version
             SHOW_HELP_VERSION(arg_resolver);
         } else {
             ++error;
@@ -3870,8 +3957,8 @@ int play1(int argc, char* argv[])
 
     if (argc > 1) {
         ret = get_option(argc, argv, opt);
-        //- dump_arg(argc, argv);
-        //- dump_opt(opt);
+        // dump_arg(argc, argv);
+        // dump_opt(opt);
 
         if (ret) {
             if (opt.wipe_con) {
@@ -3896,7 +3983,7 @@ int play1(int argc, char* argv[])
 
     if (opt.wipe_con) {
     } else if (ret) {
-        fprintf(stderr, "%s", "Good day, bye");
+        fprintf(stderr, "%s\n", "Good day, bye");
     } else {
     }
 
@@ -3927,9 +4014,9 @@ int main(int argc, char* argv[])
         }
     } __except (UnhandledExceptionFilterFunc(GetExceptionInformation())) {
 #if defined(__GNUC__) || defined(__clang__)
-#else // _MSC_VER
+#else  // _MSC_VER
         OutputDebugStringA("executed exception filter function\n");
-#endif // __GNUC__ || __clang__
+#endif  // __GNUC__ || __clang__
     }
     con.AllowCtrlHandler();
 
@@ -3941,8 +4028,8 @@ int main(int argc, char* argv[])
 // INFO("warning are not filtered")
 #else
 // INFO("warning are filtered")
-#pragma warning(disable: 4514) // unreferenced inline function has been removed
-#pragma warning(disable: 4710) // function not inlined
+#pragma warning(disable: 4514)  // unreferenced inline function has been removed
+#pragma warning(disable: 4710)  // function not inlined
 #endif
 #endif
 
