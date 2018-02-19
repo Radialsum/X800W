@@ -1,14 +1,23 @@
-// vim:foldmethod=marker
 //
-// TODO:
-// set_terminate
-// _set_purecall_handler
-// _set_new_handler
-// _set_new_mode
-// _RTC_SetErrorFuncW
+// A 2048 puzzle clone for Windows console.
 //
-// set_unexpected
-// _set_abort_behavior
+
+//
+// see https://gabrielecirulli.github.io/2048/ for original 2048 that
+// is created by Gabriele Cirulli.
+//
+
+// TODO: {{{
+//  need to check these API (not in order and may change)
+//      set_terminate
+//      _set_purecall_handler
+//      _set_new_handler
+//      _set_new_mode
+//      _RTC_SetErrorFuncW
+//
+//      set_unexpected
+//      _set_abort_behavior
+// }}}
 
 // --- notes on compilation {{{
 // reasonable compilation options
@@ -38,9 +47,19 @@
 //      -Wno-old-style-cast
 // end of notes on compilation }}}
 
+// --- notes on indentation {{{
+//      mostly resembles "One True Brace Style"
+//
+//      astyle -A10 -xG -o < input.cpp > indented-file.cpp
+//
+//      -A10    "One True Brace Style"
+//      -xG     --indent-modifiers
+//      -o      --keep-one-line-statements
+// }}}
+
 // --- preprocessor definitions/workarounds {{{
 // NOTE: USE_PRINT_MACRO_ chooses macros for variadic functions (for calling
-// printf-family) otherwise uses C++11 variadic templates. The with variadic
+// printf-family) otherwise uses C++11 variadic templates. With the variadic
 // templates the 'format' argument cannot be assessed by compilers, whereas
 // macros are good in this case to find errors at compile time.
 #define USE_PRINT_MACRO_
@@ -53,11 +72,11 @@
 #define _UNICODE
 
 #define APP_DESCRIPTION "Puzzle 2048 for Windows console"
-#define APP_VERSION "0.01.5"
+#define APP_VERSION "0.01.6"
 
 #define TEST_
 
-// strsafe.h needs MINGW_HAS_SECURE_API, sometimes it may be missing in _mingw.h
+// strsafe.h needs MINGW_HAS_SECURE_API, it can be missing in _mingw.h
 #define MINGW_HAS_SECURE_API 1
 
 #define STR(x) #x
@@ -86,7 +105,8 @@ static_assert(UNKNOWN_COMPILER, "this compiler may not be fully supported");
 #if defined(_DEBUG) || defined(DEBUG)
 #define MSC_DEBUG_
 #elif defined(__MSVC_RUNTIME_CHECKS)
-#pragma message(__FILE__"(" STR1(__LINE__) ") : note: use debugger to get runtime checks messages")
+#pragma message(__FILE__"(" STR1(__LINE__) ") : " \
+                "note: use debugger to get runtime checks messages")
 #endif
 #define MSC_ONLY_
 // #pragma intrinsic
@@ -95,15 +115,14 @@ static_assert(UNKNOWN_COMPILER, "this compiler may not be fully supported");
 #endif  // __clang__
 
 #if defined(GCC_ONLY_)
-#define NOTE_PRAGMA(x) _Pragma (#x)
-#define NOTE($M) NOTE_PRAGMA(message ($M))
+#define NOTE_PRAGMA(x) _Pragma(#x)
+#define NOTE($M) NOTE_PRAGMA(message($M))
 #elif defined(MSC_ONLY_)
 // NOTE() macro can jump to location, while INFO() cannot
 #define NOTE($M) __pragma(message(__FILE__ "(" STR1(__LINE__) "): note: " $M))
 #define INFO($M) __pragma(message(__FILE__ "(?): note: " $M))
 #elif defined(__clang__)
 #define NOTE(X) _Pragma(STR(GCC warning(X)))
-
 #endif  // __GNUC__
 
 // VC++ dislikes do { } while(0), FALSE_CONDITION tries to mute it
@@ -131,7 +150,7 @@ static_assert(UNKNOWN_COMPILER, "this compiler may not be fully supported");
 #define VERIFYV /* */
 #define VERIFYF($func) /* */
 #else
-#define VERIFYV  VerifierX(__LINE__,__FILE__,NULL) =
+#define VERIFYV VerifierX(__LINE__,__FILE__,NULL) =
 #define VERIFYF($func) VerifierX(__LINE__,__FILE__,#$func) =
 #endif
 
@@ -149,10 +168,15 @@ static_assert(UNKNOWN_COMPILER, "this compiler may not be fully supported");
 // only for system headers, trying to reduce the noise caused by -Wall
 #pragma warning(push, 4)
 // (4005 4100 4189 4242 4514 4548 4668 4710 4820 4668)
-#pragma warning(disable: 4668)  // 'symbol' is not defined as a preprocessor macro, replacing with '0' for 'directives'
-#pragma warning(disable: 4820)  // 'bytes' bytes padding added after construct 'member_name'
+// 4668: 'symbol' is not defined as a preprocessor macro, replacing with '0'
+//          for 'directives'
+// 4820: 'bytes' bytes padding added after construct 'member_name'
+#pragma warning(disable: 4668)
+#pragma warning(disable: 4820)
 #if !defined(CC_STUB_CONFIG) || defined(HAS_WALL)
-INFO("with warning level -Wall, add compiler option -DNO_WALL_FILTER to disable filtering")
+INFO("some warnings are filtered; mostly from system headers")
+INFO("with -Wall, add compiler option" \
+     " -DNO_WALL_FILTER to disable filtering")
 #endif
 #endif  // NO_WALL_FILTER
 #endif  // MSC_ONLY_
@@ -184,7 +208,11 @@ INFO("with warning level -Wall, add compiler option -DNO_WALL_FILTER to disable 
 #pragma warning(pop)
 #endif
 
-enum { N = 4, S8 = sizeof(uint64_t), N64 = ((N * N + S8 - 1) / S8)};
+//
+// N is the board size, default is 4; 3 or 5 also possible.
+// if other than 3, 4, or 5 then modify Grid::PatchGrid()
+//
+enum { N = 4, S8 = sizeof(uint64_t), N64 = ((N * N + S8 - 1) / S8) };
 enum { X800 = 11 };  // game target value for 2048
 enum { UUS, ROW_L2R_STRIPE, COL_U2D_STRIPE, ROW_R2L_STRIPE, COL_D2U_STRIPE };
 
@@ -284,15 +312,14 @@ void ErrorInfo(LPCTSTR lpszFunction)
     LPVOID lpDisplayBuf;
     DWORD dw = GetLastError();
 
-    FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER |
-        FORMAT_MESSAGE_FROM_SYSTEM |
-        FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL,
-        dw,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPTSTR) &lpMsgBuf,
-        0, NULL);
+    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                  FORMAT_MESSAGE_FROM_SYSTEM |
+                  FORMAT_MESSAGE_IGNORE_INSERTS,
+                  NULL,
+                  dw,
+                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                  (LPTSTR) &lpMsgBuf,
+                  0, NULL);
 
     if (lpMsgBuf) {
         size_t buf_size = (size_t)(lstrlen((LPCTSTR)lpMsgBuf) +
@@ -311,6 +338,7 @@ void ErrorInfo(LPCTSTR lpszFunction)
         } else {
             // TODO
         }
+
         LocalFree(lpMsgBuf);
     } else {
         // TODO
@@ -320,9 +348,11 @@ void ErrorInfo(LPCTSTR lpszFunction)
 
 // code defect detectors {{{
 #if defined(MSC_DEBUG_)
-namespace memleak_reporter {
+namespace memleak_reporter
+{
 #pragma comment(lib, "msvcrtd")
-class MemLeakReporter {
+class MemLeakReporter
+{
   public:
     MemLeakReporter()
     {
@@ -364,7 +394,8 @@ MemLeakReporter mld; NOTE("MemLeakReporter in use")
 }  // namespace memleak_reporter
 
 #if defined(__MSVC_RUNTIME_CHECKS)
-namespace runtime_error_reporter {
+namespace runtime_error_reporter
+{
 // class RunTimeChecker works only when CRT libraries are linked.
 // Otherwise the function _CRT_RTC_INITW needs to be defined to set
 // the Run-Time-Error-Reporting-Function (which is RTC_ErrorFunc()
@@ -380,6 +411,7 @@ int RTC_ErrorFunc(int errType, const wchar_t* file, int line,
     (void)errType;
     // Prevent re-entrance, just in case if multi-threaded
     static long running = 0;
+
     while (InterlockedExchange(&running, 1)) {
         Sleep(0);
     }
@@ -396,6 +428,7 @@ int RTC_ErrorFunc(int errType, const wchar_t* file, int line,
     // remove path from 'file'
     if (file && *file) {
         const wchar_t* filename = wcsrchr(file, L'\\');
+
         if (filename && *++filename) {
             file = filename;
         } else { }
@@ -424,9 +457,11 @@ int RTC_ErrorFunc(int errType, const wchar_t* file, int line,
 
     return 0;
 }
+
 #pragma runtime_checks("", restore)
 
-class RunTimeChecker {
+class RunTimeChecker
+{
   public:
     RunTimeChecker()
     {
@@ -449,7 +484,6 @@ RunTimeChecker rtc; NOTE("RunTimeChecker in use")
 }  // namespace runtime_error_reporter
 #endif  // __MSVC_RUNTIME_CHECKS
 #endif  // MSC_DEBUG_
-
 // end of code defect detectors }}}
 
 // error handling routines {{{
@@ -480,6 +514,7 @@ LONG WINAPI UnhandledExceptionFilterFunc(struct _EXCEPTION_POINTERS* pinfo)
     // It works for me with gvim and command prompt, and no debugger!
     if ((code == EXCEPTION_BREAKPOINT) || (code == EXCEPTION_SINGLE_STEP)) {
         fprintf(stderr, "%s\n", "seems debugger present...");
+
         if (call_count < 2) {
             return EXCEPTION_EXECUTE_HANDLER;
         } else {
@@ -490,7 +525,8 @@ LONG WINAPI UnhandledExceptionFilterFunc(struct _EXCEPTION_POINTERS* pinfo)
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
-class VerifierX {
+class VerifierX
+{
   public:
     VerifierX(int line, const char* file, const char* func) :
         line_(line), file_(file), func_(func) { }
@@ -501,16 +537,14 @@ class VerifierX {
     {
         if (handle == INVALID_HANDLE_VALUE) {
             print();
-        } else {
-        }
+        } else { }
     }
 
     void operator=(int status)
     {
         if (status != 0) {
             print();
-        } else {
-        }
+        } else { }
     }
 
   private:
@@ -526,6 +560,7 @@ class VerifierX {
             fprintf(stderr, "%s\n", "error");
         }
     }
+
   private:
     int line_;
     const char* file_;
@@ -535,9 +570,11 @@ class VerifierX {
 
 // pseudo random number generator {{{
 // random number generator influenced by Gray code
-class GRNG {
+class GRNG
+{
   public:
     enum { B = 8, M = ((1 << B) - 1) };
+
   public:
     GRNG() : seed_(0) { }
     explicit GRNG(int seed) : seed_((uint8_t)seed) { }
@@ -574,7 +611,8 @@ class GRNG {
 };
 
 // random number generator based on c-stdlib
-class SRNG {
+class SRNG
+{
   public:
     SRNG() { }
     ~SRNG() { }
@@ -636,7 +674,8 @@ struct Duration {
     int16_t ms;
 };
 
-class Timer {
+class Timer
+{
   public:
     Timer() : stopped_(true), wait_(0), start_(0), finish_(0) { }
     ~Timer() { }
@@ -653,8 +692,7 @@ class Timer {
         if (!stopped_) {
             stopped_ = true;
             finish_ = Clock().Ticks_ms();
-        } else {
-        }
+        } else { }
     }
 
     void Continue()
@@ -710,7 +748,8 @@ class Timer {
 // end of date/time helpers }}}
 
 // windows console api wrapper {{{
-class Console {
+class Console
+{
   public:
     enum { LAST_VALUE = 0xffff };
   public:
@@ -724,6 +763,7 @@ class Console {
     ~Console()
     {
         FlushConsoleInputBuffer(input_);
+
         if (conout_ != INVALID_HANDLE_VALUE) {
             CloseHandle(conout_);
         } else { }
@@ -740,36 +780,30 @@ class Console {
             Beep(750, 300);
             retval = TRUE;
             break;
-
-        // Pass other signals to the next handler.
         case CTRL_BREAK_EVENT:
             Beep(900, 200);
             // printf("Ctrl-Break event\n\n");
             retval = FALSE;
             break;
-
-        // CTRL-CLOSE: confirm that the user wants to exit.
         case CTRL_CLOSE_EVENT:
+            // CTRL-CLOSE: confirm that the user wants to exit.
             Beep(600, 200);
             // printf("Ctrl-Close event\n\n");
             retval = TRUE;
             ++interrupted_;
             break;
-
         case CTRL_LOGOFF_EVENT:
             Beep(1000, 200);
             // printf("Ctrl-Logoff event\n\n");
             retval = FALSE;
             ++interrupted_;
             break;
-
         case CTRL_SHUTDOWN_EVENT:
             Beep(750, 500);
             // printf("Ctrl-Shutdown event\n\n");
             retval = FALSE;
             ++interrupted_;
             break;
-
         default:
             retval = FALSE;
             break;
@@ -812,6 +846,7 @@ class Console {
                                  0, 0, OPEN_EXISTING, 0, 0);
             SetStdHandle(STD_OUTPUT_HANDLE, conout_);
         }
+
         VERIFYF(GetStdHandle) input_ = GetStdHandle(STD_INPUT_HANDLE);
         VERIFYF(GetStdHandle) output_ = GetStdHandle(STD_OUTPUT_HANDLE);
         oldcp_ = GetConsoleOutputCP();
@@ -910,6 +945,7 @@ class Console {
         switch (WaitForSingleObject(input_, 100)) {
         case WAIT_OBJECT_0: {
             DWORD nEvents;
+
             if (ReadConsoleInput(input_, &inrec, 1, &nEvents)) {
                 if (nEvents > 0) {
                     return 1;
@@ -922,11 +958,13 @@ class Console {
         case WAIT_ABANDONED:
         case WAIT_FAILED:
         default:  // TODO: to check recoverable or not and to act on it
-            // dprint("wait for input failed with error code %lu", (DWORD)GetLastError());
+            // dprint("wait for input failed with error code %lu",
+            //        (DWORD)GetLastError());
             break;
         }
 
         inrec.EventType = 0x0;
+
         if (interrupted_) {
             return 0;
         } else { }
@@ -973,7 +1011,8 @@ class Console {
         }
     }
 
-    void Resize(int rows) {
+    void Resize(int rows)
+    {
         // only y value is handled
         CONSOLE_SCREEN_BUFFER_INFO csbi;
         GetConsoleScreenBufferInfo(output_, &csbi);
@@ -1000,7 +1039,7 @@ class Console {
 
             SMALL_RECT srctWindow;
             srctWindow.Top = top;  // move top saved y-top-position
-            srctWindow.Bottom = top+(SHORT)rows;
+            srctWindow.Bottom = top + (SHORT)rows;
             srctWindow.Left = 0;
             srctWindow.Right = csbi.srWindow.Right - csbi.srWindow.Left;
 
@@ -1121,8 +1160,8 @@ class Console {
     int Write(unsigned int color, const char* str)
     {
         if (color == LAST_VALUE) {
-        } else {
             // no change in color
+        } else {
             SetColor(color);
         }
 
@@ -1173,11 +1212,17 @@ class Console {
         COORD buf_size;
         COORD buf_coord;
 
+        src.Top += top_;
+        src.Bottom += top_;
+        dst.Top += top_;
+        dst.Bottom += top_;
+
         buf_size.X = (short)(src.Right - src.Left + 1);
         buf_size.Y = (short)(src.Bottom - src.Top + 1);
 
 #ifndef USE_VLA_
         CHAR_INFO* buf = NULL;
+
         try {
             // assert ((size_t)(buf_size.X * buf_size.Y)) > 0
             buf = new CHAR_INFO[(size_t)(buf_size.X * buf_size.Y)];
@@ -1194,20 +1239,18 @@ class Console {
         buf_coord.Y = 0;
 
         // Copy the block from the screen buffer to the buf
-        ReadConsoleOutput(
-            output_,    // screen buffer to read from
-            buf,        // buffer to copy into
-            buf_size,   // col-row size of buf
-            buf_coord,  // top left dest. cell in buf
-            &src);      // screen buffer source rectangle
+        ReadConsoleOutput(output_,    // screen buffer to read from
+                          buf,        // buffer to copy into
+                          buf_size,   // col-row size of buf
+                          buf_coord,  // top left dest. cell in buf
+                          &src);      // screen buffer source rectangle
 
         // Copy from the buf to the screen buffer.
-        WriteConsoleOutput(
-            output_,    // screen buffer to write to
-            buf,        // buffer to copy from
-            buf_size,   // col-row size of buf
-            buf_coord,  // top left src cell in buf
-            &dst);      // dest. screen buffer rectangle
+        WriteConsoleOutput(output_,    // screen buffer to write to
+                           buf,        // buffer to copy from
+                           buf_size,   // col-row size of buf
+                           buf_coord,  // top left src cell in buf
+                           &dst);      // dest. screen buffer rectangle
 
 #ifndef USE_VLA_
         delete[] buf;
@@ -1252,7 +1295,8 @@ template<typename T> T Min(T a, T b)
     return a < b ? a : b;
 }
 
-class Stripe {
+class Stripe
+{
   public:
     Stripe(int type, int pos, uint8_t (&aa)[N][N])
         : begin_(0), step_(0), end_(0),
@@ -1308,6 +1352,7 @@ class Stripe {
                     printf("%s", ".");
                 }
             }
+
             printf("%s", "\n");
         }
     }
@@ -1331,6 +1376,7 @@ class Stripe {
             printf("!!!(%d): ", stripe_);
             break;
         }
+
         DPRINT("b(%d) s(%d) e(%d)\n", begin_, step_, end_);
     }
 
@@ -1366,9 +1412,11 @@ class Stripe {
         }  // */
 
         char s[N + 2] = { 0 };
+
         for (int i = 0; i < N; ++i) {
             s[i] = (char)(A[i] + '0');
         }
+
         DPRINT("%s", s);
     }
 #endif
@@ -1382,6 +1430,7 @@ class Stripe {
         case COL_D2U_STRIPE: return (limit < index);
         default: break;
         }
+
         printf("within(%d %d)\n", index, limit);
         return false;
     }
@@ -1413,6 +1462,7 @@ class Stripe {
                         i += step_;
                     }
                 }
+
                 ec -= step_;
                 b = -1;
             } else { }
@@ -1427,9 +1477,11 @@ class Stripe {
                 } else { /* A[c] = 0; */ }  // A[c + step_] = 0;
 
                 int i;
+
                 for (i = c + step_; within(i, ec); i += step_) {
                     A[i] = A[i + step_];
                 }
+
                 A[i] = 0;
                 ec -= step_;
             } else { }
@@ -1469,7 +1521,8 @@ class Stripe {
     uint8_t (&a_)[N][N];
 };
 
-class Matrix {
+class Matrix
+{
     //     column 0 1 2 3
     //          +----------> X
     //    row 0 | 0 1 2 3
@@ -1500,6 +1553,7 @@ class Matrix {
             for (int i = 0; i < N * N; ++i) {
                 aa_[i >> 2][i & 0x3] = (uint8_t)(i);
             }
+
             aa_[0][0] = 1;
             break;
         default:
@@ -1518,6 +1572,7 @@ class Matrix {
         } else {
             dprint("A[%u][%u] ?\n", r, c);
         }
+
         return 0;
     }
 
@@ -1533,12 +1588,15 @@ class Matrix {
     void DbgPrint()
     {
         fprintf(stderr, "%s", " ");
+
         for (int r = 0; r < N; ++r) {
             for (int c = 0; c < N; ++c) {
                 fprintf(stderr, "%2X", aa_[r][c]);
             }
+
             fprintf(stderr, "%s", " ");
         }
+
         fprintf(stderr, "%s", "\n");
         fflush(stderr);
     }
@@ -1598,7 +1656,8 @@ class Matrix {
 };
 // end of math or numerical routines }}}
 
-class Grid {
+class Grid
+{
   public:
     // grid/message offsets of x and y
     enum {
@@ -1619,6 +1678,7 @@ class Grid {
         memset(&text_, 0, sizeof(text_));
 #endif
         SetGridMode(1);
+
         for (int i = 0; i < (int)(sizeof(ct) / sizeof(ct[0])); ++i) {
             ct[i] = 0x0u;
         }
@@ -1645,7 +1705,7 @@ class Grid {
         //    7 |        |        |        |        |             1         2
         //    8 +--------+--------+--------+--------+   0123456789012345678901
         //    9 |        |        |        |        |
-        //   10 |        |        |        |        |   (MESG_X,MESG_Y) = (46,14)
+        //   10 |        |        |        |        |  (MESG_X,MESG_Y) = (46,14)
         //    1 |        |        |        |        |    /
         //    2 +--------+--------+--------+--------+   +--------------------+
         //    3 |        |        |        |        |   |      You WON!      |
@@ -1667,16 +1727,19 @@ class Grid {
         con.Write(0x08u, GRID_X, GRID_Y, text_.grid_top_line);
 
         unsigned int y;
+
         for (y = 1; y < 4 * N; ++y) {
             con.MoveTo(GRID_X, GRID_Y + y);
+
             switch (y) {
             case 4: case 8: case 12: case 16:
-            con.Write(text_.grid_sep_line);
+                con.Write(text_.grid_sep_line);
                 break;
             default:
                 con.Write(text_.grid_mid_line);
             }
         }
+
         con.MoveTo(GRID_X, GRID_Y + y);
         con.Write(text_.grid_bot_line);
 
@@ -1687,6 +1750,7 @@ class Grid {
 
     void PatchGrid(int grid_size)
     {
+        // PatchGrid is used just to experiment copying regions of console
         switch (grid_size) {
         case 3: {
             SMALL_RECT src = { 41, 2, 50, 14 };
@@ -1797,6 +1861,7 @@ class Grid {
         }
 
         unsigned int i;
+
         if (highlight) {
             i = 0x70;
         } else {
@@ -1817,6 +1882,7 @@ class Grid {
     {
         for (unsigned int r = 0; r < N; ++r) {
             unsigned int y = 3 + 4 * r;
+
             for (unsigned int c = 0; c < N; ++c) {
                 unsigned int x = 6 + 9 * c;
 
@@ -1837,45 +1903,35 @@ class Grid {
     {
         switch (n & 0x7fu) {
         case 0:  PrintLine(i, "   0  "); break;
-
         case 1:  PrintLine(i, "   2  "); break;
         case 2:  PrintLine(i, "   4  "); break;
         case 3:  PrintLine(i, "   8  "); break;
-
         case 4:  PrintLine(i, "  16  "); break;
         case 5:  PrintLine(i, "  32  "); break;
         case 6:  PrintLine(i, "  64  "); break;
-
         case 7:  PrintLine(i, "  128 "); break;
         case 8:  PrintLine(i, "  256 "); break;
         case 9:  PrintLine(i, "  512 "); break;
-
         case 10: PrintLine(i, " 1024 "); break;
         case 11: PrintLine(i, " 2048 "); break;
         case 12: PrintLine(i, " 4096 "); break;
         case 13: PrintLine(i, " 8192 "); break;
-
         case 14: PrintLine(i, "  16K "); break;
         case 15: PrintLine(i, "  32K "); break;
         case 16: PrintLine(i, "  64K "); break;
-
         case 17: PrintLine(i, " 128K "); break;
         case 18: PrintLine(i, " 256K "); break;
         case 19: PrintLine(i, " 512K "); break;
-
         case 20: PrintLine(i, "  1M  "); break;
         case 21: PrintLine(i, "  2M  "); break;
         case 22: PrintLine(i, "  4M  "); break;
         case 23: PrintLine(i, "  8M  "); break;
-
         case 24: PrintLine(i, "  16M "); break;
         case 25: PrintLine(i, "  32M "); break;
         case 26: PrintLine(i, "  64M "); break;
-
         case 27: PrintLine(i, " 128M "); break;
         case 28: PrintLine(i, " 256M "); break;
         case 29: PrintLine(i, " 512M "); break;
-
         default: PrintLine(i, "  ??  "); break;
         }
     }
@@ -1945,6 +2001,7 @@ class Grid {
     {
         COLORREF cto[16];
         con.GetOldPalette(cto);
+
         switch (s) {
         case 1:
             ct[0]  = 0x00182028;
@@ -2042,9 +2099,10 @@ class Grid {
         char buf[32] = { };
         con.SetColor((show_ms ? 0x7u : 0x8u));
         con.MoveTo(MESG_X + 10, 5);
+
         if (dur.day > 0) {
             unused = snprintf(buf, sizeof(buf) - 1, " %d day%s %02d",
-                     dur.day, (dur.day > 1 ? "s" : ""), dur.hour);
+                              dur.day, (dur.day > 1 ? "s" : ""), dur.hour);
             (void)unused;  // TODO: assert?
             con.Write(buf);
         } else {
@@ -2145,7 +2203,8 @@ enum {
     BOARD_SWAP_HORIZONTAL,
 };
 
-class Mapper {
+class Mapper
+{
   public:
     Mapper(int y_top = 0) : r(-1), c(-1), top(y_top) { }
     ~Mapper() { }
@@ -2171,8 +2230,7 @@ class Mapper {
             } else {
                 return 0;
             }
-        } else {
-        }
+        } else { }
 
         x -= Grid::GRID_X;
         y -= Grid::GRID_Y + top;
@@ -2190,6 +2248,7 @@ class Mapper {
         default:
             c = x / W;
         }
+
         switch (y % H) {
         case 0:
             return 0;
@@ -2214,7 +2273,8 @@ class Mapper {
     // int xc;
 };
 
-class TimeKeeper {
+class TimeKeeper
+{
   public:
     explicit TimeKeeper(Grid& g) : show_ms_(false), hash_(-1), timer_(), grid_(g) { }
     ~TimeKeeper() { }
@@ -2227,6 +2287,7 @@ class TimeKeeper {
     void Update()
     {
         const Duration dur = timer_;
+
         if (show_ms_) {
             if (dur.ms + 1000 == hash_) {
                 return;
@@ -2240,6 +2301,7 @@ class TimeKeeper {
                 hash_ = dur.sec;
             }
         }
+
         grid_.ShowTime(timer_, show_ms_);
     }
 
@@ -2287,7 +2349,8 @@ class TimeKeeper {
     Grid& grid_;
 };
 
-class Puzzle2048 {
+class Puzzle2048
+{
   public:
     Puzzle2048()
         : old_score_(0), score_(), grid_(), time_keeper_(grid_),
@@ -2336,10 +2399,12 @@ class Puzzle2048 {
             case GAME_UNDO:
                 highlight = false;
                 Undo();
+
                 if (state) {
                     grid_.ClearMessage();
                     state = 0;
                 } else { }
+
                 time_keeper_.Continue();
                 grid_.ShowScore(score_);
                 grid_.ShowMatrix(matrix);
@@ -2385,15 +2450,18 @@ class Puzzle2048 {
                         k = GAME_PERSIST;
                     } else { }
                 }
+
                 switch (k) {
                 case GAME_PERSIST:
                     grid_.ClearMessage();
+
                     if ((state & 0xf0) == 0x10) {
                         Start2048();
                     } else {
                         time_keeper_.Continue();
                         AddNew(rand_row, rand_col);
                     }
+
                     state = 0;
                     break;
                 case GAME_STOP:
@@ -2420,34 +2488,28 @@ class Puzzle2048 {
                     Start2048();
                     grid_.ShowMatrix(matrix);
                     continue;
-
                 case BOARD_REFRESH:
                     grid_.DrawGrid();
                     grid_.ShowMatrix(matrix);
                     grid_.ShowScore(score_);
                     time_keeper_.Update();
                     continue;
-
                 case BOARD_TRANSPOSE:
                     matrix.Transpose();
                     grid_.ShowMatrix(matrix);
                     continue;
-
                 case BOARD_ROTATE_CW:
                     matrix.RotateCW();
                     grid_.ShowMatrix(matrix);
                     continue;
-
                 case BOARD_ROTATE_CCW:
                     matrix.RotateCCW();
                     grid_.ShowMatrix(matrix);
                     continue;
-
                 case BOARD_SWAP_VERTICAL:
                     matrix.SwapV();
                     grid_.ShowMatrix(matrix);
                     continue;
-
                 case BOARD_SWAP_HORIZONTAL:
                     matrix.SwapH();
                     grid_.ShowMatrix(matrix);
@@ -2458,7 +2520,6 @@ class Puzzle2048 {
                     time_keeper_.Pause();
                     grid_.ShowMessage(true);  // won
                     continue;
-
                 case GAME_LOST:
                     state = 0x10;
                     time_keeper_.Pause();
@@ -2468,22 +2529,20 @@ class Puzzle2048 {
                 default:
                     break;
                 }
+
                 switch (k) {
                 case MOVE_LEFT:
                 case MOVE_MOUSE_WHEEL_FW:
                     m = Nudge(ROW_L2R_STRIPE);
                     break;
-
                 case MOVE_RIGHT:
                 case MOVE_MOUSE_WHEEL_FW_SHIFT:
                     m = Nudge(ROW_R2L_STRIPE);
                     break;
-
                 case MOVE_UP:
                 case MOVE_MOUSE_WHEEL_BW_SHIFT:
                     m = Nudge(COL_U2D_STRIPE);
                     break;
-
                 case MOVE_DOWN:
                 case MOVE_MOUSE_WHEEL_BW:
                     m = Nudge(COL_D2U_STRIPE);
@@ -2539,8 +2598,10 @@ class Puzzle2048 {
         con.Write("\n Press ESC key to exit\n\n");
 
         char buf[16] = { };
+
         for (unsigned int i = 0; i < 16; ++i) {
             con.Write(" ");
+
             for (unsigned int j = 0; j < 16; ++j) {
                 unsigned int color = ((i * 16) + j) & 0xffu;
                 unused = snprintf(buf, sizeof(buf) - 1, " %2x ", color);
@@ -2555,6 +2616,7 @@ class Puzzle2048 {
 
         int k;
         InputReader ir;
+
         while ((k = ir.GetInput()) != GAME_ABORT) {
             Sleep(0);
         }
@@ -2587,6 +2649,7 @@ class Puzzle2048 {
 
         grid_.DrawGrid();
         grid_.ShowMatrix(matrix);
+
         if (g == 1) {
             grid_.ShowCell(matrix(0, 1), 0, 1);
         } else { }
@@ -2597,6 +2660,7 @@ class Puzzle2048 {
 
         int k;
         InputReader ir;
+
         while ((k = ir.GetInput()) != GAME_ABORT) {
             if (k == 'W') {
                 grid_.ShowMessage(true);  // won
@@ -2607,6 +2671,7 @@ class Puzzle2048 {
             } else {
                 grid_.ClearMessage();
             }
+
             Sleep(0);
         }
 
@@ -2615,7 +2680,8 @@ class Puzzle2048 {
     }
 
   private:
-    class Scorer {
+    class Scorer
+    {
       public:
         Scorer() : value_(0) { }
         ~Scorer() { }
@@ -2648,15 +2714,15 @@ class Puzzle2048 {
         int value_;
     };
 
-
-    class InputReader {
+    class InputReader
+    {
       public:
-        InputReader(short top=0)
+        InputReader(short top = 0)
             : k_(0), xk_(0), t_(0), xt_(0), mapper_(top)
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
         // not supported ?
 #else
-              , inrec_{0,{{0,0,0,0,{0},0}}}
+              , inrec_{0, {{0, 0, 0, 0, {0}, 0}}}
 #endif
         {
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
@@ -2667,7 +2733,8 @@ class Puzzle2048 {
 
         int GetInput()
         {
-            class Dummy {
+            class Dummy
+            {
               public:
                 void operator()()
                 {
@@ -2685,6 +2752,7 @@ class Puzzle2048 {
             int n = 0;
             int value = 0;
             bool done = false;
+
             do {
                 if (con.ReadInput(inrec_)) {
                     switch (inrec_.EventType) {
@@ -2693,12 +2761,14 @@ class Puzzle2048 {
                         continue;
                     case KEY_EVENT:
                         value = GetKeyInput(inrec_.Event.KeyEvent, n);
+
                         if (value) {
                             return value;
                         } else { }
                         continue;
                     case MOUSE_EVENT:
                         value = GetMouseInput(inrec_.Event.MouseEvent);
+
                         if (value) {
                             return value;
                         } else { }
@@ -2714,7 +2784,6 @@ class Puzzle2048 {
                 } else {
                     return GAME_ABORT;
                 }
-
                 continue;
             } while (!done);
 
@@ -2768,9 +2837,10 @@ class Puzzle2048 {
                 if (ker.dwControlKeyState & SHIFT_PRESSED) {
                     return BOARD_ROTATE_CCW;
                 } else { }
-             break;
+                break;
             default: break;
             }
+
             return GAME_NOOP;
         }
 
@@ -2794,10 +2864,12 @@ class Puzzle2048 {
                 if (mer.dwButtonState == FROM_LEFT_1ST_BUTTON_PRESSED) {
                     COORD& pos = mer.dwMousePosition;
                     int ret = mapper_.FindCell(pos.X, pos.Y);
+
                     if (ret < 0x10000) {
                         return ret;
                     } else {
                         DWORD& key = mer.dwControlKeyState;
+
                         if (key & LEFT_ALT_PRESSED) {
                             return ret;  // cheating :)
                         } else { }
@@ -2805,9 +2877,9 @@ class Puzzle2048 {
 #if 0
                 } else if (mer.dwControlKeyState & SHIFT_PRESSED) {
 #endif
-                } else {
-                }
+                } else { }
             }
+
             return GAME_NOOP;
         }
 
@@ -2857,12 +2929,14 @@ class Puzzle2048 {
         if (con.CanReset()) {
             if (a != '?') {
                 con.ResetPalette();
+
                 if (a & 0x4) {
                     con.RestoreBuffer();
                 } else {
                     con.MoveTo(0, (4 * N + 3));
                 }
             } else { }
+
             con.Release();
         } else { }
     }
@@ -2872,6 +2946,7 @@ class Puzzle2048 {
         grid_.ClearMessage();
         con.MoveTo(0, 0);
         rng.Seed(rng(256) + (((unsigned int)Clock().Ticks_ms()) & 0xffff));
+
         if (n) {
             Preset(n);
             board_.ac[0][0] = (uint8_t)(n + 1);
@@ -2883,6 +2958,7 @@ class Puzzle2048 {
             AddNew(r, c);
             score_.Reset(0);
         }
+
         grid_.DrawGrid();
         grid_.ShowMatrix(matrix);
         grid_.ShowScore(score_);
@@ -2894,6 +2970,7 @@ class Puzzle2048 {
     unsigned int Nudge(int type)
     {
         unsigned int m = 0;
+
         for (int i = 0; i < N; ++i) {
             Stripe s(type, i, board_.ac);
             m += s.Nudge(score_);
@@ -2905,6 +2982,7 @@ class Puzzle2048 {
     void Save()
     {
         old_score_ = score_;
+
         for (int i = 0; i < N64; ++i) {
             undo_.al[i] = board_.al[i];
         }
@@ -2918,6 +2996,7 @@ class Puzzle2048 {
     void Undo()
     {
         score_.Reset(old_score_);
+
         for (int i = 0; i < N64; ++i) {
             board_.al[i] = undo_.al[i] & HIGHLIGHT_FILTER;
         }
@@ -2958,13 +3037,16 @@ class Puzzle2048 {
     {
         int min, max;
         unsigned int nz = CountZeros(min, max);
+
         if (nz > N + N) {
             nz -= N;
         } else { }
+
         if (nz > 0) {
             unsigned int pos = rng(nz);
             uint8_t v = GetNewValue(min, max);
             unsigned int n = 0;
+
             for (unsigned int r = N; r--; (void)0) {
                 for (unsigned int c = N; c--; (void)0) {
                     if (board_.ac[r][c] == 0) {
@@ -2973,10 +3055,12 @@ class Puzzle2048 {
                             row = r;
                             col = c;
                         } else { }
+
                         ++n;
                     } else { }
                 }
             }
+
             grid_.ShowCell(matrix(row, col), row, col, true);
         } else { }
 
@@ -3058,6 +3142,7 @@ class Puzzle2048 {
                 } else { }
             }
         }
+
         for (int c = 0; c < N; ++c) {
             for (int r = 0; r < N - 1; ++r) {
                 if (board_.ac[r][c] == board_.ac[r + 1][c]) {
@@ -3065,6 +3150,7 @@ class Puzzle2048 {
                 } else { }
             }
         }
+
         for (int r = 0; r < N; ++r) {
             for (int c = 0; c < N; ++c) {
                 if (board_.ac[r][c] == 0) {
@@ -3072,6 +3158,7 @@ class Puzzle2048 {
                 } else { }
             }
         }
+
         return 0;
     }
 
@@ -3102,7 +3189,8 @@ class Puzzle2048 {
 };
 
 // application option/help/version helpers {{{
-class AppInfo {
+class AppInfo
+{
   public:
     AppInfo() { }
     ~AppInfo() { }
@@ -3120,13 +3208,14 @@ class AppInfo {
         } else { }
     }
 
-    void ShowTitle(bool show_date=false)
+    void ShowTitle(bool show_date = false)
     {
         fprintf(stdout, "%s version %s", GetDescription(), GetVersion());
 
         if (show_date) {
             char str[128];
             const char* ret;
+
             if ((ret = GetBuildDate(str)) != 0) {
                 fprintf(stdout, " (%s)\n", ret);
             } else { }
@@ -3175,6 +3264,7 @@ class AppInfo {
             str[5] = '1'; break;
         default: break;
         }
+
         switch (__DATE__[2]) {
         case 'b': str[6] = '2'; break;  // Feb
         case 'c': str[6] = '2'; break;  // Dec
@@ -3188,6 +3278,7 @@ class AppInfo {
         case 'y': str[6] = '5'; break;  // May
         default:  str[6] = '?'; break;  // NOTE: error
         }
+
         str[7] = '-';
         str[8] = (__DATE__[4] == ' ' ? '0' : __DATE__[4]);
         str[9] = __DATE__[5];
@@ -3228,7 +3319,7 @@ class AppInfo {
 
         do {
 #if defined(__clang__)
-            BREAK_IF_ERROR(strcat_s(str, "Clang/C++/LLVM "), error);
+            BREAK_IF_ERROR(strcat_s(str, "Clang/LLVM "), error);
             BREAK_IF_ERROR(strcat_s(str, STR2(__clang_major__)), error);
             BREAK_IF_ERROR(strcat_s(str, STR2(__clang_minor__)), error);
             BREAK_IF_ERROR(strcat_s(str, STR1(__clang_patchlevel__)), error);
@@ -3266,11 +3357,11 @@ class AppInfo {
             BREAK_IF_ERROR(strcat_s(str, STR1(CC_STUB_VC_VER)), error);
 #else
             // VVRRPPPPP since VS 2005
-            BREAK_IF_ERROR(strncat_s(str, STR1(_MSC_FULL_VER)+0, 2), error);
+            BREAK_IF_ERROR(strncat_s(str, STR1(_MSC_FULL_VER) + 0, 2), error);
             BREAK_IF_ERROR(strcat_s(str, "."), error);
-            BREAK_IF_ERROR(strncat_s(str, STR1(_MSC_FULL_VER)+2, 2), error);
+            BREAK_IF_ERROR(strncat_s(str, STR1(_MSC_FULL_VER) + 2, 2), error);
             BREAK_IF_ERROR(strcat_s(str, "."), error);
-            BREAK_IF_ERROR(strcat_s(str, STR1(_MSC_FULL_VER)+4), error);
+            BREAK_IF_ERROR(strcat_s(str, STR1(_MSC_FULL_VER) + 4), error);
 #endif  // CC_STUB_VC_VER
 #endif  // _MSC_FULL_VER
 
@@ -3314,7 +3405,8 @@ struct arg_definition {
 };
 
 template <size_t N>
-class ArgParser {
+class ArgParser
+{
   private:
     enum { LENGTH = N };
   public:
@@ -3330,6 +3422,7 @@ class ArgParser {
 
         for (int i = 1; i < argc; i++) {
             int ret = 0;
+
             if (argv[i][0] == '-') {
                 if (argv[i][1] == '-') {
                     if (argv[i][2] == '\0') {
@@ -3359,6 +3452,7 @@ class ArgParser {
                 if (check_known_opt(argv[i])) {
                     return 1;
                 } else { }
+
                 ++error;
             } else {
                 token += ret + 1;
@@ -3370,7 +3464,8 @@ class ArgParser {
             error++;
         } else { }
 
-        // EPRINT("tok %d, argc %d, err %d, ret %d\n", token, argc, error, (error == 0 ? 1 : 0));
+        // EPRINT("tok %d, argc %d, err %d, ret %d\n", token, argc, error,
+        //        (error == 0 ? 1 : 0));
 
         return error == 0 ? 1 : 0;
     }
@@ -3387,6 +3482,7 @@ class ArgParser {
         for (int i = 0; i < LENGTH; ++i) {
             show_option_help(i);
         }
+
         if (footer && *footer) {
             fprintf(stdout, "%s", footer);
         } else { }
@@ -3422,8 +3518,7 @@ class ArgParser {
                     (arg_def_[id].default_value ? "(default: " : ""),
                     (arg_def_[id].default_value ? arg_def_[id].default_value : ""),
                     (arg_def_[id].default_value ? ')' : ' '));
-        } else {
-        }
+        } else { }
 
 #undef PRINT_OPT
         return 1;
@@ -3453,9 +3548,11 @@ class ArgParser {
         for (char opt = *++arg; opt; opt = *++arg) {
             // EPRINT("get_short_arg: %c\n", opt);
             int found = 0;
+
             for (int i = 0; i < LENGTH; i++) {
                 if (arg_def_[i].short_option == opt) {
                     arg_def_[i].count += 1;
+
                     if (arg_def_[i].need_value) {
                         if ((++pos) < argc) {
                             arg_def_[i].value = argv[pos];
@@ -3465,10 +3562,14 @@ class ArgParser {
                             return -1;
                         }
                     } else { }
+
                     ++found;
                 } else { }
             }
-            // EPRINT("get_short_arg: %c %s found , con %d err %d ret %d\n", opt, (found?"":"not"), consumed, error, (error == 0 ? consumed : -1));
+
+            // EPRINT("get_short_arg: %c %s found , con %d err %d ret %d\n",
+            //        opt, (found?"":"not"), consumed, error,
+            //        (error == 0 ? consumed : -1));
             if (found == 0) {
                 ++error;
             } else { }
@@ -3484,12 +3585,14 @@ class ArgParser {
         } else { }
 
         bool negate = false;
+
         if ((arg[2] == 'n') && (arg[3] == 'o')) {
             negate = true;
 
             if (arg[4] == '-') {
                 arg += 1;
             } else { }
+
             arg += 2;
         } else { }
 
@@ -3499,8 +3602,10 @@ class ArgParser {
 
         for (int i = 0; i < LENGTH; i++) {
             size_t pos = opt_equal(arg_def_[i].long_option, arg);
+
             if (pos) {
                 arg += pos;
+
                 if (arg_def_[i].need_value) {
                     if (*arg) {
                         arg_def_[i].value = arg;
@@ -3512,17 +3617,21 @@ class ArgParser {
                         arg_def_[i].value = arg;  // TODO: ignoring error, why?
                     } else { }
                 }
+
                 if (negate) {
                     if (arg_def_[i].count > 0) {
                         arg_def_[i].count = -arg_def_[i].count;
                     } else { }
+
                     arg_def_[i].count -= 1;
                 } else {
                     if (arg_def_[i].count < 0) {
                         arg_def_[i].count = -arg_def_[i].count;
                     } else { }
+
                     arg_def_[i].count += 1;
                 }
+
                 return 0;
             } else { }
         }
@@ -3564,12 +3673,14 @@ class ArgParser {
             return 1;
         } else if (c0 == '-') {
             char c1 = arg[1];
+
             if (c1 == '?') {
                 help_ = 1;
                 return 1;
             } else if (c1 == '-') {
                 char c2 = arg[2];
-                if  (c2 == '?') {
+
+                if (c2 == '?') {
                     help_ = 1;
                     return 1;
                 } else if ((c2 == 'h') &&
@@ -3603,6 +3714,7 @@ class ArgParser {
         } else { }
 
         size_t len = strlen(option);  // NOTE: length can be cached
+
         if (len > 0) {
             if (strncmp(option, (arg + 2), len) == 0) {
                 if (arg[len + 2] == '=') {
@@ -3670,7 +3782,8 @@ enum {
 #undef CALL_GET_ENUM_ID
 
 template <size_t N>
-class ArgResolver {
+class ArgResolver
+{
   private:
     enum { LENGTH = N };
   public:
@@ -3680,7 +3793,6 @@ class ArgResolver {
 
     int Resolve()
     {
-
 #define RESOLVE_OPT(a,...) \
         Resolve_##a();
 
@@ -3690,6 +3802,7 @@ class ArgResolver {
 
 #undef RESOLVE_OPT
 #undef CALL_RESOLVE_OPT
+
         if (error_ > 0) {
             return -error_;
         } else if (help_ || version_) {
@@ -3703,6 +3816,7 @@ class ArgResolver {
     {
         // EPRINT("%s\n", "color");
         int id = k_color_id;
+
         if (arg_def_[id].count && arg_def_[id].value) {
             if (arg_def_[id].value[1] == '\0') {
                 switch (arg_def_[id].value[0]) {
@@ -3724,6 +3838,7 @@ class ArgResolver {
     {
         // EPRINT("%s\n", "grid");
         int id = k_grid_type;
+
         if (arg_def_[id].count && arg_def_[id].value) {
             if (strcmp(arg_def_[id].value, "ascii") == 0) {
                 opt_.grid_type = 0;
@@ -3733,6 +3848,7 @@ class ArgResolver {
                 ++error_;
             }
         } else { }
+
         return error_ ? 0 : 1;
     }
 
@@ -3740,11 +3856,13 @@ class ArgResolver {
     {
         // EPRINT("%s\n", "wipe");
         int id = k_wipe_con;
+
         if (arg_def_[id].count > 0) {
             opt_.wipe_con = 1;
         } else {
             opt_.wipe_con = 0;
         }
+
         return 1;
     }
 
@@ -3752,17 +3870,20 @@ class ArgResolver {
     {
         // EPRINT("%s\n", "test");
         int id = k_test_mode;
+
         if (arg_def_[id].count > 0) {
             opt_.test_mode = 1;
         } else {
             opt_.test_mode = 0;
         }
+
         return 1;
     }
 
     int Resolve_tile_set()
     {
         int id = k_tile_set;
+
         // EPRINT("%s %s\n", "tile", arg_def_[id].value);
         if (arg_def_[id].count && arg_def_[id].value) {
             if (arg_def_[id].value[1] == '\0') {
@@ -3776,6 +3897,7 @@ class ArgResolver {
                 ++error_;
             }
         } else { }
+
         return error_ ? 0 : 1;
     }
 
@@ -3783,6 +3905,7 @@ class ArgResolver {
     {
         // EPRINT("%s\n", "unknown");
         int id = k_more_arg;
+
         if (arg_def_[id].value) {
             if ((arg_def_[id].value[0] == '?') &&
                 (arg_def_[id].value[1] == '\0')) {
@@ -3806,8 +3929,10 @@ class ArgResolver {
                 version_ = 1;
                 return 1;  // version option cannot be combined with others
             } else { }
+
             ++error_;
         } else { }
+
         return error_ ? 0 : 1;
     }
 
@@ -3834,7 +3959,7 @@ class ArgResolver {
     int error_;
     int version_;
     struct option& opt_;
-    struct arg_definition (&arg_def_)[N];
+    struct arg_definition(&arg_def_)[N];
 };
 
 void dump_arg_def(struct arg_definition* arg_def)
@@ -3984,8 +4109,7 @@ int play1(int argc, char* argv[])
     if (opt.wipe_con) {
     } else if (ret) {
         fprintf(stderr, "%s\n", "Good day, bye");
-    } else {
-    }
+    } else { }
 
     return ret;
 }
@@ -4018,6 +4142,7 @@ int main(int argc, char* argv[])
         OutputDebugStringA("executed exception filter function\n");
 #endif  // __GNUC__ || __clang__
     }
+
     con.AllowCtrlHandler();
 
     return ret;
@@ -4025,11 +4150,12 @@ int main(int argc, char* argv[])
 
 #if defined(MSC_ONLY_)
 #if defined(NO_WALL_FILTER)
-// INFO("warning are not filtered")
+// INFO("warnings were not filtered")
 #else
-// INFO("warning are filtered")
+// INFO("warnings were filtered")
 #pragma warning(disable: 4514)  // unreferenced inline function has been removed
 #pragma warning(disable: 4710)  // function not inlined
 #endif
 #endif
 
+// vim:foldmethod=marker
