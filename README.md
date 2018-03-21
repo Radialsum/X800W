@@ -17,17 +17,18 @@ Playing 2048 on Windows Console
 
 Run 2048.exe from a command prompt, and use the arrow keys.
 
-| key | function |
+| Key | Function |
 |-----|----------|
 | *Arrow keys* | move tiles |
 | `t` | Transpose board |
 | `r` | Rotate board clockwise |
+| `R` | Rotate board anticlockwise |
 | `v` | Vertically flip board |
 | `h` | Horizontally flip board |
-| `i` | Initialize board (new game starts) |
+| `i` | Initialize board (unconditionally a new game starts) |
 | `z` | Undo (only once, and if pressed immediately) |
-| `e` | ? |
-| `w` | ? |
+| `e` | ? *(pressed more than once)* |
+| `w` | ? *(pressed more than once)* |
 | `F5` | Redraw board |
 | `q` | quit game (unconditionally, no confirmation) |
 | `Escape` | quit game (unconditionally, no confirmation) |
@@ -61,7 +62,7 @@ can be used --- can try mouse wheel with shift key too.
 > since they presumably make game more interesting!*
 
 >
-> **Hint**: Keep bottom row filled then game can be fast paced.
+> **Hint**: Keep bottom row filled, then game can be fast paced.
 > For example `2` will not appear once `256` or higher block obtained,
 > and so on...
 >
@@ -81,6 +82,22 @@ The 2048 console game is tested with cmd.exe of Windows 10.
 
 Of course, 2048 runs on Console2, ConsoleZ or Cmder, but possibly without mouse
 support and there are other limitations, for example color related issues.
+
+#### GUI Vim's `:terminal`
+
+The recent releases of Vim includes a feature for running
+a terminal emulator in a Vim window.
+
+With *terminal* feature, it is possible to play the game in a Vim window!
+See screenshot below.
+
+![2048 clone for Windows console in gVim](Vim-2048.png)
+
+Above screenshot uses Consolas font and also with the following setup:
+
+* `set linespace=0  " removes gaps in grid-lines`
+* `set shell=cmd.exe\ /D  " Don't load any AutoRun commands`
+* `highlight Terminal guibg=black  " corrects background color`
 
 
 Why just another 2048 clone?
@@ -128,12 +145,15 @@ Examples to compile with cc.bat in a command prompt:
 * cc e 2048.cpp
 * cc 7 2048.cpp
 
-or to see more warnings:
+Or to see more warnings:
 
 * cc e 2048.cpp -Wall
 * cc 7 2048.cpp -Weffc++ -pedantic -Wunused
 
-and also try `2048 --version` to see the details.
+And also try `2048 --version` to see the details.
+
+> Note: cc.bat uses numeric identifiers for compilers to make it easier to call
+> from Vim as *makeprg*; see *_vimrc* in *config repo*.
 
 
 License
