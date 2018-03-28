@@ -83,7 +83,7 @@ The 2048 console game is tested with cmd.exe of Windows 10.
 Of course, 2048 runs on Console2, ConsoleZ or Cmder, but possibly without mouse
 support and there are other limitations, for example color related issues.
 
-*The colors set by `--color=3`  option is based on Cmder.*
+*The colors set by `--color=3`  option are based on Cmder.*
 
 #### GUI Vim's `:terminal`
 
