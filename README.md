@@ -83,6 +83,8 @@ The 2048 console game is tested with cmd.exe of Windows 10.
 Of course, 2048 runs on Console2, ConsoleZ or Cmder, but possibly without mouse
 support and there are other limitations, for example color related issues.
 
+*The colors set by `--color=3`  option is based on Cmder.*
+
 #### GUI Vim's `:terminal`
 
 The recent releases of Vim includes a feature for running
@@ -118,8 +120,9 @@ Compilation
 Known to compile with below compilers. (There can be warnings.)
 
 * MSVC 2015 (Community) or MSVC 2017 (Build Tools)
-* GNU/GCC 6.3 or 7.2 (G++ from MinGW-w64 posix-seh)
-* LLVM 3.9, 4.0 or 5.0 with one of above compilers (MSVC or GCC 6.3)
+* MinGW-w64 GNU/GCC 6.3 or 7.3 (g++ from MinGW-w64 posix-seh)
+* LLVM 5.0 or 6.0 with one of above compilers (MSVC or MinGW-w64 GCC 7.3)
+* MinGW GNU/GCC 6.3 (g++ from `mingw.org`) *with few trade-offs*
 
 Minimal compilation command can be:
 
@@ -135,20 +138,29 @@ A single file compilation helper batch file `cc.bat` can also be used.
 info on tool chains used.
 
 Create `vce.bat` that calls *VS2015 x64 Native Tools Command Prompt* and place
-it in the `PATH` or in the current directory. Or create `g72.bat` that setups
+it in the `PATH` or in the current directory. Or create `g73.bat` that setups
 *Mingw-w64 GNU/GCC 7.2* `x86_64-posix-seh` from `SourceForge.net` or
 *MinGW Distro* from `nuwen.net` (compiled by *Stephan T. Lavavej*).
 
 Examples to compile with cc.bat in a command prompt:
 *(below are valid for current directory where 2048.cpp is found)*
 
-* cc e 2048.cpp
-* cc 7 2048.cpp
+* cc.bat e 2048.cpp
+* cc.bat 7 2048.cpp
 
 Or to see more warnings:
 
-* cc e 2048.cpp -Wall
-* cc 7 2048.cpp -Weffc++ -pedantic -Wunused
+* cc.bat e 2048.cpp -Wall
+* cc.bat 7 2048.cpp -Weffc++ -pedantic -Wunused
+
+Or in a command prompt, try the below to compile using LLVM with GCC
+
+*   > *:: setup GCC 7.3 MinGW-w64 posix-seh environment*<br/>
+    > g72.bat<br/>
+    > *:: setup LLVM/clang 6.0 environment*<br/>
+    > l60.bat<br/>
+    > *:: call cc.bat with already setup environment*<br/>
+    > cc.bat @ 2048.cpp<br/>
 
 And also try `2048 --version` to see the details.
 

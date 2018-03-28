@@ -22,7 +22,7 @@
 ::
 :: Also the compiler environment setup batchfiles are found inside:
 ::      E:\local\bin
-:: Perhaps SUBST or mklink may be used to map E:
+:: Perhaps SUBST or mklink may be used to map E: or E:\local
 ::
 
 set ARGS=
@@ -66,7 +66,8 @@ set CC_STUB_GC_VER=
 set AUX_TC=
 
 if "%CID%" == "5"   set PRI_TC=l50.bat&   set TOOLCHAIN=lcvc& goto cc_env_setup
-if "%CID%" == "7"   set PRI_TC=g72.bat&   set TOOLCHAIN=gcc&  goto cc_env_setup
+if "%CID%" == "6"   set PRI_TC=l60.bat&   set TOOLCHAIN=lcvc& goto cc_env_setup
+if "%CID%" == "7"   set PRI_TC=g73.bat&   set TOOLCHAIN=gcc&  goto cc_env_setup
 if "%CID%" == "b"   set PRI_TC=vcb.bat&   set TOOLCHAIN=msvc& goto cc_env_setup
 if "%CID%" == "c"   set PRI_TC=vcc.bat&   set TOOLCHAIN=msvc& goto cc_env_setup
 if "%CID%" == "e"   set PRI_TC=vce.bat&   set TOOLCHAIN=msvc& goto cc_env_setup
@@ -79,8 +80,9 @@ if "%CID%" == "4g"  set PRI_TC=l40.bat&   set TOOLCHAIN=lcgc& goto cc_env_setup
 if "%CID%" == "49"  set PRI_TC=g49.bat&   set TOOLCHAIN=gcc&  goto cc_env_setup
 if "%CID%" == "53"  set PRI_TC=g53.bat&   set TOOLCHAIN=gcc&  goto cc_env_setup
 if "%CID%" == "62"  set PRI_TC=g62.bat&   set TOOLCHAIN=gcc&  goto cc_env_setup
-if "%CID%" == "63"  set PRI_TC=g63n.bat&  set TOOLCHAIN=gcc&  goto cc_env_setup
+if "%CID%" == "63"  set PRI_TC=g63.bat&   set TOOLCHAIN=gcc&  goto cc_env_setup
 if "%CID%" == "71"  set PRI_TC=g71.bat&   set TOOLCHAIN=gcc&  goto cc_env_setup
+if "%CID%" == "72"  set PRI_TC=g72.bat&   set TOOLCHAIN=gcc&  goto cc_env_setup
 if "%CID%" == "11"  set PRI_TC=vcb.bat&   set TOOLCHAIN=msvc& goto cc_env_setup
 if "%CID%" == "12"  set PRI_TC=vcc.bat&   set TOOLCHAIN=msvc& goto cc_env_setup
 if "%CID%" == "143" set PRI_TC=vce32.bat& set TOOLCHAIN=msvc& goto cc_env_setup
@@ -139,7 +141,7 @@ set LINTFLAGS=--level=3
 goto run_lint
 
 :sloppy
-set PRI_TC=sloppy.bat
+set PRI_TC=sloppy.exe
 set LINTFLAGS=
 goto run_lint
 
@@ -231,7 +233,7 @@ if defined CC_STUB_GC_VER set MACROS=-DCC_STUB_GC_VER=%CC_STUB_GC_VER%
 if defined CC_STUB_TS set "MACROS=%MACROS% -DCC_STUB_TS=%CC_STUB_TS%
 set MACROS=-DCC_STUB_CONFIG=^"%OPTS%^" %MACROS%
 :: echo %MACROS%
-:: echo cmd /d /c "%PRI_TC% & %AUX_TC% & %CCMD% %MACROS% %ARGS%
+ echo cmd /d /c "%PRI_TC% & %AUX_TC% & %CCMD% %MACROS% %ARGS%
 cmd /d /c "%PRI_TC% >nul & %AUX_TC% >nul & %CCMD% %MACROS% %ARGS% 2>&1"
 goto :eof
 

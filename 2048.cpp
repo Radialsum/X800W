@@ -17,6 +17,8 @@
 //
 //      set_unexpected
 //      _set_abort_behavior
+//
+//      warn if _CRT_SECURE_NO_WARNINGS is defined
 // }}}
 
 // --- notes on compilation {{{
@@ -143,6 +145,7 @@ static_assert(UNKNOWN_COMPILER, "this compiler may not be fully supported");
 #endif  // __GNUC__ || __clang__
 
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
+// TODO: meaning of return value differs for snprintf & _snprintf
 #define snprintf _snprintf
 #endif
 
@@ -201,7 +204,18 @@ INFO("with -Wall, add compiler option" \
 #include <tchar.h>
 #include <stdio.h>
 #include <io.h>
+// secure-CRT functions are only available starting with VC8
+// secure-CRT functions are only available with MinGW-w64
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+// not yet supported by MinGW (verified with 5.0)
+#define strcat_s(dst, src) strcat(dst, src)
+#define StringCchPrintf snwprintf
+#define _fileno(__F) ((__F)->_file)
+#define errno_t void*
+#else
 #include <strsafe.h>
+#endif
+
 
 #if defined(MSC_ONLY_) && !defined(NO_WALL_FILTER)
 // #pragma warning(default: 4820 4668)
@@ -308,7 +322,7 @@ void dprint(const char* fmt, Args... args)
 // Format a readable error message and display it in a message box
 void ErrorInfo(LPCTSTR lpszFunction)
 {
-    LPVOID lpMsgBuf;
+    LPVOID lpMsgBuf = NULL;
     LPVOID lpDisplayBuf;
     DWORD dw = GetLastError();
 
@@ -563,8 +577,8 @@ class VerifierX
 
   private:
     int line_;
-    const char* file_;
-    const char* func_;
+    const char* const file_;
+    const char* const func_;
 };
 // end of error handling routines }}}
 
@@ -1084,6 +1098,10 @@ class Console
 
     void GetPalette(COLORREF ct[16])
     {
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+        // GetConsoleScreenBufferInfoEx() not yet supported by MinGW
+        (void)ct;
+#else
         CONSOLE_SCREEN_BUFFER_INFOEX sbi;
         ZeroMemory(&sbi, sizeof(sbi));
         sbi.cbSize = sizeof(sbi);
@@ -1091,10 +1109,15 @@ class Console
         if (GetConsoleScreenBufferInfoEx(output_, &sbi)) {
             memcpy(ct, sbi.ColorTable, sizeof(COLORREF) * 16);
         } else { }
+#endif
     }
 
     void SetPalette(COLORREF ct[16])
     {
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+        // SetConsoleScreenBufferInfoEx() not yet supported by MinGW
+        (void)ct;
+#else
         CONSOLE_SCREEN_BUFFER_INFOEX sbi;
         ZeroMemory(&sbi, sizeof(sbi));
         sbi.cbSize = sizeof(sbi);
@@ -1115,6 +1138,7 @@ class Console
             MoveWindow(hwnd, r.left, r.top, r.right - r.left, r.bottom - r.top, TRUE);
             UpdateWindow(hwnd);
         } else { }
+#endif
     }
 
     void ResetPalette()
@@ -3362,6 +3386,10 @@ class AppInfo
             BREAK_IF_ERROR(strncat_s(str, STR1(_MSC_FULL_VER) + 2, 2), error);
             BREAK_IF_ERROR(strcat_s(str, "."), error);
             BREAK_IF_ERROR(strcat_s(str, STR1(_MSC_FULL_VER) + 4), error);
+#if defined(_MSC_BUILD)
+            BREAK_IF_ERROR(strcat_s(str, "."), error);
+            BREAK_IF_ERROR(strcat_s(str, STR1(_MSC_BUILD)), error);
+#endif
 #endif  // CC_STUB_VC_VER
 #endif  // _MSC_FULL_VER
 
@@ -3373,6 +3401,14 @@ class AppInfo
         } while (FALSE_CONDITION);
 
 #undef BREAK_IF_ERROR
+
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+        // since strcat() is used with MinGW,
+        // error points to str and cannot be used for error checking.
+        if (error) {
+            error = NULL;
+        } else { }
+#endif
 
         if (error) {
             return 0;
@@ -4118,10 +4154,14 @@ int main(int argc, char* argv[])
 {
     SetErrorMode(SEM_NOGPFAULTERRORBOX);
     SetUnhandledExceptionFilter(UnhandledExceptionFilterFunc);
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+    // setting handlers not yet supported by MinGW
+#else
     _invalid_parameter_handler oldHandler, newHandler;
     newHandler = invalid_parameter_handler;
     oldHandler = _set_invalid_parameter_handler(newHandler);
     (void)oldHandler;
+#endif
 
     if (SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
         // printf("\nThe Control Handler is installed.\n");
